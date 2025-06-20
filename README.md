@@ -50,11 +50,11 @@ By the end of the course participants should be:
 ### Day 3: [23-06]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Monday** | **12:00 - 13:00** | **Recap & Confirmatory Analyses** |
-| *Monday* | *13:00 - 13:15*  | *Break*                             |
-| **Monday** | **13:15 - 14:00** | **Reproducible Reporting with R Markdown** |
-|*Monday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Monday** | **15:00 - 16:00** | **Hands-on R Markdown**      |
+| **Monday** | **12:00 - 13:30** | **[Recap & Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/d12f9a43098bfccdbfaa6e02f6dcaa99c1e54cd4/slides/4_1_Confirmatory_Data_Analysis.html)** |
+| *Monday* | *13:30 - 14:00*  | *Break*                             |
+| **Monday** | **14:00 - 15:00** | **Reproducible Reporting with R Markdown** |
+|*Monday*     | *15:00 - 15:20* | * Break*                       |
+| **Monday** | **15:20 - 16:00** | **Hands-on R Markdown**      |
 
 ---
 ### Day 4: [24-06]
