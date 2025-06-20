@@ -1,7 +1,7 @@
 ---
-title: 'Exercise 5_1_1: R Markdown'
+title: 'Exercise: R Markdown'
 author: 'Veronika Batzdorfer'
-date: '2024-11-22'
+date: '2025-06-23'
 ---
 
 ```{r child = "./content/config/exercises_setup.Rmd"}
@@ -16,6 +16,8 @@ This document uses *Gapminder* data and you can find it in the `exercises` folde
 ```{block, box.title = "1", box.body = list(fill = "white"), box.icon = "fa-star"}
 The first thing we want you to do is to open the `explore_gapminder.Rmd`file in *RStudio* and explore it a bit to see what it contains. You can also open `explore_gapminder.html` (in your browser) to see the `.Rmd` and the resulting output document side-by-side.
 ```
+
+
 
 ```{block, opts.label = "clues"}
 You can open the `.Rmd` file via the `File` tab or the menu (`File` -> `Open File`) in *RStudio*.
@@ -55,36 +57,116 @@ packages("rmarkdown", "knitr", "tidyverse", "visdat", "janitor", "pander", "patc
 
 Feel free to play around a bit with the `explore_gapminder.Rmd` and its output (you can also change parts of the `YAML` header to see how that influences the output).
 
-```{block, box.title = "2", box.body = list(fill = "white"), box.icon = "fa-star"}
-The big task for this exercise is to tuesdata_subset`. Using the `explore_gapminder.Rmd` as a starting point and guidance, we want you to do the following in this document:
+```{rblock, box.title = "2", box.body = list(fill = "white"), box.icon = "fa-star"}
 
-1. Load and wrangle the data the same way as before to create a subset in the exploratory data anlaysis (e.g., select variables like demographic variables, handle missing values, recode values, and calculate aggregate measures).
+Use data transformations and visualizations to answer the following questions.
 
+a) Which five countries had the largest population size in 2018 and how has the population size changed since 1960 ?
+  
+```
+
+```{r two-exercise, solution = TRUE}
+
+top5_countries <- gap_full %>%
+     filter(year == 2018) %>% 
+     arrange(-pop) %>% 
+     select(country) %>% 
+     head(5) %>% 
+     pull()
+
+gap_full %>% 
+  filter(country %in% top5_countries) %>% 
+  ggplot() +
+  geom_line(mapping = aes(x = year, y = pop, color = country))+
+  theme_bw()
+
+```
+
+
+```{rblock, box.title = "3", box.body = list(fill = "white"), box.icon = "fa-star"}
+
+
+b) Rank fertility rate (`fert`) in 2018 for countries like Vietnam, Poland, Afghanistan, Armenia, Denmark
+c) What is the relationship between GDP and fertility ? Visualize it.
+  
+```
+
+
+```{r three-exercise, solution = TRUE}
+
+gap_full %>%
+  filter(year==2018, country %in% c("Poland", "Afghanistan", "Armenia", "Vietnam", "Denmark")) %>%
+  arrange(fert) %>%
+  select(country, fert) %>% 
+  knitr::kable()
+
+
+gap_full %>%
+  filter(year==2018) %>%
+  ggplot(aes(y=fert, x=gdp_percap)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(limits = c(0, 100000)) +
+  theme_bw()
+
+```
+
+
+```{rblock, box.title = "4", box.body = list(fill = "white"), box.icon = "fa-star"}
+
+
+d) If you look at the continent level relationship between per-capita GDP and life_expectancy (`life_exp`) what are the trends for continents in 2018 ? Visualize it.
+  
+```
+
+
+
+```{r four-exercise, solution = TRUE}
+
+gap_full %>%
+  filter(year==2018) %>%
+  drop_na(life_exp, gdp_percap, continent) %>%
+  ggplot(aes(y=life_exp, x=gdp_percap, color=continent)) +
+  geom_point() +
+  geom_smooth(se=F, method = "lm") +
+  scale_x_log10() +
+  facet_wrap(~continent, scales = "free_y") +
+  theme_bw()
+
+```
+
+
+
+
+```{block, box.title = "5", box.body = list(fill = "white"), box.icon = "fa-star"}
+The big task for this exercise is to use the workflow with the `titanic` data set. (see in data/titanic.csv, and the codebookd titanic_codebook.csv). Using the `explore_gapminder.Rmd` as a starting point and guidance, do the following in this document:
+
+1. Load and wrangle the data the same way as before to create a subset in the exploratory data analysis (e.g., select variables like demographic variables, handle missing values, recode values, and calculate aggregate measures).
+
+Select key demographic and survival-related variables: `Survived`, `Pclass`, `Sex`, `Age`, `Fare`, `Embarked`, `SibSp`, `Parch`
 
 2. Get an overview of the missing data using the `vis_miss()` function from the `visdat` package.
 
-4. Look at the relative frequencies for the variables `	ed_level`, `age`, `dev_type`, and `remote_work` using a function from the `janitor` package.
+4. Explore variable distributions. Look at the relative frequencies for the variables using a function from the `janitor` package for `Sex`, `Survived`, `Pclass`.
 
-5. Create bar plots with `ggplot2` to visualize the relative frequencies (percentages) for the variables `ed_level` and `dev_type`.
+5. Create bar plots with `ggplot2` to visualize the relative frequencies (percentages) for the variables `Pclass` and `Sex`.
 
-6. Using the `pander` package, include a table with the output of the `base R` function `summary()` for the variables.
+6. Using the `pander` package, include a table with the output of the `base R` function `summary()` for the variables like `Sex`, `Fare`.
 
-7. Create `ggplot2` bar plots to visualize the distribution of the variable `comp_total`.
 
-8. Create a `ggplot2` boxplot to show differences.
+7. Create a `ggplot2` boxplot to show differences differences in Age by Survived, and differences in Fare by Pclass and Sex.
 
-9. Calculate correlations.
+8. Calculate correlations for continous numeric variables (`Age`, `Fare`)
 
-10. Create a plot with the `GGally` package to visualize these correlations.
+9. Create a plot with the `GGally` package to visualize these correlations.
 
-11. Calculate a logistic regression model.
+10. Calculate a logistic regression model using `glm()` with `Survived` as the outcome variable. Include predictors like: Pclass, Sex, Age, Fare, SibSp, Parch
 
-12. Turn the output of this model into a table with the `broom` package and display it with `knitr::kable()`.
+11. Visualize the regression results using the sjPlot package.
 
-13. Create one regression plot with the coefficients and another one with the predictions using the `sjPlot` package.
+
 
 This is a lot, but you can find template code (`explore_gapminder.Rmd`) for most of this in the the `solutions` folder (and the rest in the slides for the previous sessions). 
-To get you started we have created an almost empty template `.Rmd` called `explore_gesis_allbus_template.Rmd` in the `exercises` folder.
 ```
 
 
