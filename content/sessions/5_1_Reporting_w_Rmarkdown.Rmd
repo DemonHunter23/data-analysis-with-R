@@ -786,7 +786,10 @@ Patil
 
 class: center, middle
 
-# [Exercise](https://rawcdn.githack.com/nika-akin/r-intro/87453e4ba13b1b3d4b9eca51eddc2627aa6efcea/exercises/Exercise_5_1_1_R_Markdown.html) time ``` r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man") ```
+
+# [Exercise](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/021ff05034dd0f74d946f7b8366c6a750e7e150c/exercises/Exercise_5_1_1_R_Markdown.html) time `r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man")`
+
+## [Solutions](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/021ff05034dd0f74d946f7b8366c6a750e7e150c/solutions/Exercise_5_1_1_R_Markdown.html)
 
 ------------------------------------------------------------------------
 
