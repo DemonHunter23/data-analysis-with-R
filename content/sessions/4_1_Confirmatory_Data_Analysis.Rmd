@@ -615,6 +615,7 @@ class: middle
 
 ---
 
+
 ## Assessing model quality
 
 The [`performance` package](https://easystats.github.io/performance/) that is that is part of the [`easystats` collection of packages](https://easystats.github.io/easystats/) offers some functions for assessing model quality, including different types of R². A commonly used metric for logistic regression models, e.g., is Nagelkerke's R².
@@ -624,19 +625,21 @@ The [`performance` package](https://easystats.github.io/performance/) that is th
 
 ---
 
-## Changing the link function
+## Model selection
 
-For the fun of it, let's change the link function in our regression model from logit to probit.
+Apply stepwise AIC to remove/ add predictors.
 
 ```{r probit-reg, eval = FALSE}
-simple_model_probit <- 
-  glm(
-     ai_threat ~ participation_frequency  + years_coding , 
-    family = binomial(link = "probit"),
-    data = df
-  )
+fit_log1 <- glm(r_used ~ main_branch,
+                family = binomial, data = df_model)
 
-summary(simple_model_probit)
+fit_log2 <- glm(r_used ~ main_branch +
+                  age_group +
+                  ai_sentiment,
+                  family = binomial, data = df_model)
+
+anova(fit_log1, fit_log2, test = "Chisq")
+
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -645,19 +648,34 @@ summary(simple_model_probit)
 
 class:middle
 .small[
-```{r ref.label = "probit-reg", echo = FALSE, eval=FALSE}
+```{r ref.label = "probit-reg", echo = FALSE, eval=TRUE}
 ```
 ]
 
 ---
+## Compare models step-wise using AIC 
 
-## Comparing models with an ANOVA
+Start with a simple model and stepwise remove possible predictors
 
-We can also compare models with some standard tools. For example, to examine competing models, such as our logistic and probit regression, we can apply an ANOVA.
-
-```{r anova-glm-compare, eval=FALSE}
-anova(simple_model_logistic, simple_model_probit)
+```{r stepwise}
+fit_log_step = step(glm(r_used ~ main_branch +
+                          age_group +
+                          ai_complexity +
+                          ai_threat, 
+                          family = binomial, data = df_model, trace = 0))
+fit_log_step
 ```
+
+.right[`r emo::ji("left_arrow_curving_right")`]
+
+---
+
+class:middle
+.small[
+```{r ref.label = "stepwise", echo = FALSE}
+```
+]
+
 
 ---
 
@@ -686,7 +704,7 @@ While it is (still) common practice to run regressions, search for 'significant'
 Regression results are a specific type/class of objects in `R`. You can use the `str()` function to get an overview of the whole structure of the object (it's a list of different information). For starters, we may want to see what the first level of this list may provide by asking for the names of the included pieces of information:
 
 ```{r names-lm}
-names(simple_linear_model)
+names(fit_log_step)
 ```
 
 ---
@@ -696,7 +714,7 @@ names(simple_linear_model)
 We can access the coefficients from our model as follows:
 
 ```{r coef-lm}
-simple_linear_model$coefficients
+fit_log_step$coefficients
 ```
 
 ---
@@ -706,7 +724,7 @@ simple_linear_model$coefficients
 `lm` objects are a little bit cumbersome to use as the information is deeply nested within the object. If you want to extract the standard errors, e.g., you can do so as follows:
 
 ```{r se-lm}
-summary(simple_linear_model)$coefficients[,2]
+summary(fit_log_step)$coefficients[,2]
 ```
 
 ---
@@ -716,7 +734,12 @@ summary(simple_linear_model)$coefficients[,2]
 The standard `summary()` doesn't supply confidence intervals. We can use the `confint()` command to produce them. For example, for the logistic regression:
 
 ```{r confint-lm, eval=FALSE}
-confint(simple_model_logistic)
+confint(fit_log_step)
+
+#- for odds ratio (OR) from log-odds
+# - i.e. OR < 1 predictor is associated with lower odds of the outcome
+exp(confint(fit_log_step))
+
 ```
 
 ---
@@ -724,7 +747,7 @@ confint(simple_model_logistic)
 
 ## Regression tables
 
-As we have seen in the session on *Exploratory Data Analysis*, there are different options for creating tables as output in `R`. The ones we have looked at in the EDA session, [`stargazer`](https://cran.r-project.org/web/packages/stargazer/index.html) and [`gtsummary`](http://www.danieldsjoberg.com/gtsummary/), can be used for creating regression tables. The functions from these packages can also be used for comparing multiple regression models in one table.
+As we have seen in the session on *Exploratory Data Analysis*, there are different options for creating tables as output in `R`:  [`stargazer`](https://cran.r-project.org/web/packages/stargazer/index.html) and [`gtsummary`](http://www.danieldsjoberg.com/gtsummary/)
 
 ---
 
@@ -759,25 +782,10 @@ class: center, middle
 ```
 ]
 
----
-
-
-
-## tidy models with `broom`
-
-.pull-left[
-We have already entered the area of reporting statistical results. We will have a separate session on reporting  with `R Markdown` tomorrow. One thing to note at this point is that more and more developers in `R` were unsatisfied with the diverse output some of the standard regression procedures provide. The outputs may be helpful to look at, but they're usually not great for further processing. For that purpose, we need data frames/tibbles.
-]
-
-.pull-right[
-```{r echo = FALSE, out.width = "70%"}
-woRkshoptools::include_picture("./broom.png")
-```
-]
 
 ---
 
-## 3 functions of `broom`
+## Tidy models with `broom`
 
 The [`broom`](https://broom.tidymodels.org/) package provides only 3 but very powerful main functions:
 - `tidy()`: creates a `tibble` from your model
@@ -824,6 +832,8 @@ As we've said at the beginning of this session, we only looked at some of the ba
 
 - Bayesian regression models using [`brms`](https://paul-buerkner.github.io/brms/)
 
+- Mediation analysis using [`mediation`](https://cran.r-project.org/web/packages/mediation/vignettes/mediation.pdf)
+  - response, mediator, sensitivity analyses (`medsens()`)
 ---
 
 
@@ -831,3 +841,144 @@ As we've said at the beginning of this session, we only looked at some of the ba
 ## Extracurricular activities
 
 As it is such a simple and useful package, we recommend exploring the `broom` package a bit further. Alex Hayes, one authors of the package, [gave an interesting talk about it at the *RStudio* Conference in 2019](https://rstudio.com/resources/rstudioconf-2019/solving-the-model-representation-problem-with-broom/).
+
+---
+
+class: center, middle
+
+# [Exercise](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/983625a7d096079e0598f2d60ca1281c757d4659/exercises/Exercise_4_1_3_Regression_Reporting.html) time `r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man")`
+
+## [Solutions](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/983625a7d096079e0598f2d60ca1281c757d4659/solutions/Exercise_4_1_3_Regression_Reporting.html)
+
+---
+## Coefficient Plots (parameters)
+
+Create coefficient plot
+```{r fig.width= 5, fig.height=4}
+library(parameters)
+
+model_parameters(fit_log2) %>% 
+  plot()
+```
+
+---
+## ggplot2-based coefficient plot
+
+```{r fig.width= 5, fig.height=4}
+
+model_parameters(fit_log2) %>% 
+  plot() +
+  scale_y_discrete(
+    labels = c(  # reversed order
+      "Sentiment on AI", "Age", "Professional stage"
+    )
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+```
+
+---
+
+## Prediction plots vs Regressions coefficients
+
+- Regression coefficients are sometimes a bit hard to read
+
+    -they are based on the scale of the independent variable when unstandardized
+    -it is ambiguous what they actually mean substantially
+    -for example, is a coefficient of .2 or .05 (practically) meaningful or not?
+
+- Predictions are a solution
+
+    - they basically draw the regression line into the scatter plot of the Y and X variables
+    - we can read at which level of X which value of Y is expected
+
+---
+
+## Predictions (sjPlot)
+
+```{r fig.width= 7, fig.height=5}
+library(sjPlot)
+
+fit_log2 %>% 
+  plot_model(
+    type = "pred", 
+    terms = "age_group"
+  )
+
+```
+
+---
+
+## Customized sjplots
+
+```{r fig.width= 6, fig.height=4}
+library(sjPlot)
+
+fit_log2 %>% 
+  plot_model(
+    type = "pred", 
+    terms = "age_group"
+  )+
+  xlab("Age") +
+  ylab("R environment used") +
+  ggtitle("Logistic Model") +
+  theme_bw()
+
+```
+
+---
+
+## Interaction effects
+
+Does age moderate the relationship between r used and main_branch?
+
+```{r interaction model}
+
+fit_log2_interaction <- glm(r_used ~ main_branch:age_group +
+                  ai_sentiment,
+                  family = binomial, data = df_model)
+
+model_parameters(fit_log2_interaction)
+```
+
+---
+
+
+## Plotting interaction effects
+
+Interaction parameters are difficult to interpret. Hence, plotting the regression parameters with `sjPlot`
+
+```{r fig.width= 5, fig.height=4}
+
+fit_log2_interaction %>% 
+  plot_model(type = "int") +
+  xlab("Age") +
+  ylab("'R used") +
+  ggtitle("Interaction Model") +
+  theme_bw()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
