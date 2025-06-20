@@ -1,12 +1,12 @@
 ---
-title: "Data Literacy: Introduction to R "
+title: "Data Literacy: Introduction to R"
 subtitle: "Reporting with R Markdown"
 author: "Veronika Batzdorfer"
 date: "2025-06-23"
 presenter: Veronika
 editor_options: 
-  markdown: 
-    wrap: 72
+  chunk_output_type: console
+
 ---
 
 layout: true
@@ -14,11 +14,11 @@ layout: true
 ```{r child = "./content/config/sessions_setup.Rmd"}
 ```
 
-------------------------------------------------------------------------
+---
 
 ## `R Markdown`
 
-create a variety of outputs in different formats: <br>`R Markdown`
+create a variety of outputs in different formats: `R Markdown`
 
 ```{r workflow-img, echo=FALSE, out.width="60%"}
 knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df81a3e3853f54d3c76ad6efc/32d37/diagrams/data-science.png")
@@ -26,13 +26,13 @@ knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df
 
 <small><small>Source: <http://r4ds.had.co.nz/></small></small>
 
-------------------------------------------------------------------------
+---
 
 ## What is `R Markdown`?
 
 > R Markdown provides an unified authoring framework for data science,
-> combining your .highlight[code, its results, and your prose
-> commentary]. R Markdown documents are fully reproducible and support
+> combining your .highlight[code, its results, and your prose]
+> commentary. R Markdown documents are fully reproducible and support
 > dozens of output formats, like PDFs, Word files, slideshows, and more
 > ([R for Data Science](https://r4ds.had.co.nz/r-markdown.html)).
 
@@ -56,7 +56,7 @@ knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df
 
 -   an `R` package
 
-------------------------------------------------------------------------
+---
 
 ## What is `R Markdown`?
 
@@ -66,15 +66,16 @@ knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df
 TL;DR of the Wikipedia article: `Markdown` is a lightweight language for
 text formatting.
 
-------------------------------------------------------------------------
+---
 
 ## What does `R Markdown` do?
 
 ```{r, rmarkdown-rocks-cartoon, out.width = "40%", echo = F}
 woRkshoptools::include_picture("./markdown.png")
+
 ```
 
-------------------------------------------------------------------------
+---
 
 ## What can you do with `R Markdown`?
 
@@ -97,7 +98,7 @@ For a [full list of supported output
 formats](https://rmarkdown.rstudio.com/docs/reference/index.html#section-output-formats)
 see the `rmarkdown` package documentation.
 
-------------------------------------------------------------------------
+---
 
 ## Getting started with `R Markdown`
 
@@ -110,7 +111,7 @@ install.packages("rmarkdown")
 *Note*: If you do not have *RStudio* installed, you also need to
 [install Pandoc](https://pandoc.org/installing.html).
 
-------------------------------------------------------------------------
+---
 
 ## Getting started with `R Markdown`
 
@@ -122,7 +123,7 @@ author and title and pick an output format for your document.
 woRkshoptools::include_picture("./rmarkdown_menu.png")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## PDF output
 
@@ -149,7 +150,7 @@ based on your system configuration (OS, admin rights, etc.) - properly
 setting up `LaTeX` can be a bit fiddly (especially if you do not use
 `tinytex`), we will focus on `HTML` output for this session.]
 
-------------------------------------------------------------------------
+---
 
 ## Output formats
 
@@ -173,7 +174,7 @@ installed (e.g., `LaTeX` for PDF, including Beamer presentations,
 *LibreOffice* for *OpenDocument*, or *Microsoft Office* for *Word* and
 *PowerPoint*). ]
 
-------------------------------------------------------------------------
+---
 
 ## Things to do with `R Markdown`...
 
@@ -202,7 +203,7 @@ Résumés and CVs -
 [`flexdashboard`](https://rmarkdown.rstudio.com/flexdashboard/index.html)
 for interactive dashboards]
 
-------------------------------------------------------------------------
+---
 
 ## Getting started with `R Markdown`
 
@@ -214,7 +215,7 @@ about inline code at the end in the example below.
 knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/rmarkdown_example.png?raw=true")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Anatomy of an `R Markdown` document
 
@@ -222,7 +223,7 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/rmarkdown_example_annotated.png?raw=true")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## YAML header
 
@@ -248,7 +249,7 @@ with **`---`**.
 [`ymlthis`](https://ymlthis.r-lib.org/) for creating extended YAML
 headers in and with `R`.
 
-------------------------------------------------------------------------
+---
 
 ## `(R) Markdown` formatting
 
@@ -259,7 +260,7 @@ tutorial](https://commonmark.org/help/tutorial/)), it helps to know some
 of the basics of `Markdown` text formatting as they are the same for
 `R Markdown`.
 
-------------------------------------------------------------------------
+---
 
 ## Text formatting
 
@@ -287,7 +288,7 @@ of the basics of `Markdown` text formatting as they are the same for
 
 ~~strikethrough~~ ]
 
-------------------------------------------------------------------------
+---
 
 ## Headers
 
@@ -313,7 +314,7 @@ of the basics of `Markdown` text formatting as they are the same for
 
 ]
 
-------------------------------------------------------------------------
+---
 
 # Paragraphs
 
@@ -325,7 +326,7 @@ the output document.
 *Note*: If you want to insert empty lines, you can use the `HTML`
 command `.highlight[<br>]` for `HTML` output.
 
-------------------------------------------------------------------------
+---
 
 ## Lists
 
@@ -354,7 +355,7 @@ command `.highlight[<br>]` for `HTML` output.
 -   sub-item
 -   sub-item ]
 
-------------------------------------------------------------------------
+---
 
 ## Code & formulas
 
@@ -386,7 +387,7 @@ $$\sigma^{2} = \frac{\sum_{i=1}^{n}
   \left(x_{i} - \bar{x}\right)^{2}}
   {n-1}$$ ]
 
-------------------------------------------------------------------------
+---
 
 ## Other formatting stuff
 
@@ -419,7 +420,7 @@ Guide](https://rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf)
 which is also available in *RStudio* via `Help` -\> `Cheatsheets` -\>
 `R Markdown Reference Guide`.
 
-------------------------------------------------------------------------
+---
 
 # Formatting
 
@@ -427,7 +428,7 @@ You can also use `HTML` code in `R Markdown` documents that produce
 `HTML` output. And, likewise, you can also use `LaTeX` code in documents
 that generate `PDF` output.
 
-------------------------------------------------------------------------
+---
 
 ## Code chunks
 
@@ -444,7 +445,7 @@ You can insert a code chunk via the `Insert` button (select `R`) or
 using the keyboard shortcut <kbd>Ctrl + Alt + I</kbd> (*Windows* &
 *Linux*)/<kbd>Cmd + Option + I</kbd> (*Mac*).
 
-------------------------------------------------------------------------
+---
 
 ## Code chunks
 
@@ -456,7 +457,7 @@ the bottom of the tab for the `R Markdown` document. Chunk names may
 never be used twice in a single document and should not include spaces
 or underscores.
 
-------------------------------------------------------------------------
+---
 
 ## Chunk options
 
@@ -471,7 +472,7 @@ chunk options are .highlight[`eval = FALSE`], meaning that the code is not execu
 or .highlight[`warning = FALSE`] or .highlight[`message = FALSE`] which mean that warnings or
 messages produced by the code are not shown in the output document.
 
-------------------------------------------------------------------------
+---
 
 ## Setup chunk
 
@@ -485,7 +486,7 @@ code chunks (which can be overridden by setting options for individual
 chunks), general options for `R` (e.g., regarding the use of scientific
 notation), or already load packages.
 
-------------------------------------------------------------------------
+---
 
 ## Inline code
 
@@ -501,16 +502,16 @@ output is automatically updated if it is compiled again after the input
 (typically `r`) if the code should be executed when the document is
 compiled.
 
-------------------------------------------------------------------------
+---
 
 ## Comments
 
-+ It is also possible to include comments in an `RMarkdown` document that
+- It is also possible to include comments in an `RMarkdown` document that
 will not be displayed in the output. 
 
-+ A comment in `R Markdown` looks like this: .highlight[`<!-- This is a comment -->`]
+- A comment in `R Markdown` looks like this: .highlight[`<!-- This is a comment -->`]
 
-------------------------------------------------------------------------
+---
 
 ## Knitting `r ji("yarn")`
 
@@ -524,7 +525,7 @@ where the `.Rmd` file is stored. It will also open a preview window in
 knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/rmarkdown_preview.png?raw=true")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Things to know about knitting in *RStudio*
 
@@ -535,7 +536,7 @@ document. This also means that this process will not have access to any
 of the objects or functions you have created as well as packages you
 have loaded in the current session.
 
-------------------------------------------------------------------------
+---
 
 ## Things to know about knitting in *RStudio*
 
@@ -549,7 +550,7 @@ the option .highlight[`opts_chunk$set(cache = TRUE)`]. It will cache chunk calls
 their results as long as you do not edit them (but be aware that
 potentially sensitive data could be stored in the cache).
 
-------------------------------------------------------------------------
+---
 
 ## How `R Markdown` works
 
@@ -566,7 +567,7 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 <small><small>Figure by [Andrew
 Collier](https://github.com/datawookie)</small></small>
 
-------------------------------------------------------------------------
+---
 
 ## Workflow
 
@@ -583,7 +584,7 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 <small><small>Artwork by [Allison
 Horst](https://github.com/allisonhorst/stats-Artworks) </small></small>
 
-------------------------------------------------------------------------
+---
 
 ## Tables
 
@@ -605,7 +606,7 @@ can be further extended and formatted with the
 package, and `rmarkdown::paged_table()` allows you to create paged
 tables.
 
-------------------------------------------------------------------------
+---
 
 ## Citations & bibliographies
 
@@ -621,7 +622,7 @@ bibliographies in `R Markdown` documents. Another package that can be
 used for this is
 [`RefManageR`](https://github.com/ropensci/RefManageR/).
 
-------------------------------------------------------------------------
+---
 
 ## Customizing document appearance and style
 
@@ -645,7 +646,7 @@ output: html_document:
 ---
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Customizing document appearance and style
 
@@ -671,7 +672,7 @@ output:
 ---
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Visual `R Markdown` editor
 
@@ -686,7 +687,7 @@ the visual editor via the GUI (in the `Source` pane).
 knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/rstudio_open_visual_rmd.png?raw=true")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Visual `R Markdown` editor
 
@@ -697,7 +698,7 @@ document similar to *Microsoft Word*.
 knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/rstudio_visual_rmd.png?raw=true")
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Templates
 
@@ -717,7 +718,7 @@ that, there are many other packages that provide a selection of
 
 -   [`stevetemplates`](http://svmiller.com/stevetemplates/)
 
-------------------------------------------------------------------------
+---
 
 ## `R Markdown` & collaborative editing
 
@@ -726,7 +727,7 @@ Docs*, the commenting options are somewhat restricted
 - It is also not possible to directly track changes in `R Markdown` documents (unlike you use `Git`)  
 - Also, real-time collaborative editing is not possible with `RMarkdown`
 
-------------------------------------------------------------------------
+---
 
 ## `R Markdown` & collaborative editing
 
@@ -740,7 +741,7 @@ themselves:
 -   [`redoc`](https://github.com/noamross/redoc) "is a package to enable
     a two-way R Markdown-Microsoft Word workflow"
 
-------------------------------------------------------------------------
+---
 
 ## `R Markdown` & lessons learned `r ji("page_with_curl")`
 
@@ -749,7 +750,7 @@ themselves:
 -   do not litter (`code`/ `libraries`)
 -  chunk caching (`cache=TRUE`) for time-consuming code
 
-------------------------------------------------------------------------
+---
 
 ## Lessons continued
 
@@ -758,7 +759,7 @@ themselves:
 - R Markdown **parameters** (`params`: in YAML): so same document can be used with different data
 
 
-------------------------------------------------------------------------
+---
 
 ## `R Markdown` resources
 
@@ -782,16 +783,16 @@ Yihui Xie, Christophe Dervieux, and Emily Riederer
 Tricks](https://indrajeetpatil.github.io/RmarkdownTips/) by Indrajeet
 Patil
 
-------------------------------------------------------------------------
+---
 
 class: center, middle
-
 
 # [Exercise](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/021ff05034dd0f74d946f7b8366c6a750e7e150c/exercises/Exercise_5_1_1_R_Markdown.html) time `r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man")`
 
 ## [Solutions](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/021ff05034dd0f74d946f7b8366c6a750e7e150c/solutions/Exercise_5_1_1_R_Markdown.html)
 
-------------------------------------------------------------------------
+
+---
 
 ## Extracurricular activities
 
