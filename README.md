@@ -50,13 +50,11 @@ By the end of the course participants should be:
 ### Day 3: [23-06]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Monday** | **12:00 - 13:00** | **Recap** |
+| **Monday** | **12:00 - 13:00** | **Recap & Confirmatory Analyses** |
 | *Monday* | *13:00 - 13:15*  | *Break*                             |
-| **Monday** | **13:15 - 14:00** | **Confirmatory Analyses** |
+| **Monday** | **13:15 - 14:00** | **Reproducible Reporting with R Markdown** |
 |*Monday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Monday** | **15:00 - 16:00** | **Reproducible Reporting with R Markdown**      |
-| *Monday* | *16:00 - 16:15*  | *Break*                             |
-| **Monday** | **16:15 - 17:00**  | **R Markdown revisited**     |
+| **Monday** | **15:00 - 16:00** | **Hands-on R Markdown**      |
 
 ---
 ### Day 4: [24-06]
