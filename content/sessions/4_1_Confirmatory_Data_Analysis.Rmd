@@ -1,8 +1,8 @@
 ---
-title: "Data Literacty: Introduction to R "
+title: "Data Literacy: Introduction to R "
 subtitle: "Confirmatory Data Analysis"
 author: "Veronika Batzdorfer"
-date: "2024-11-22"
+date: "2025-06-23"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -38,16 +38,11 @@ layout: true
 - Bayesian statistics
 ]
 
----
-
-### Data 
-
-```{r load-data}
+```{r load-data, echo=FALSE}
 library(tidyverse)
+library(woRkshoptools)
 
-stackoverflow_survey_questions <- read_csv("./data/stackoverflow_survey_questions.csv")
 stackoverflow_survey_single_response <- read_csv("./data/stackoverflow_survey_single_response.csv")
-qname_levels_single_response_crosswalk <- read_csv("./data/qname_levels_single_response_crosswalk.csv")
 
 df <- stackoverflow_survey_single_response %>%
   rename(
@@ -76,10 +71,7 @@ df <- df %>%
 ```
 
 
----
-
-```{rpreoproce_cfa}
-
+```{r preoproce, echo=FALSE, eval=FALSE}
 
 df <- df %>%
   mutate(
@@ -90,32 +82,6 @@ df <- df %>%
       main_branch == 4 ~ "Hobbyist",
       main_branch == 5 ~ "Former developer",
       TRUE ~ as.character(main_branch)
-    )
-  )
-
-df <- df %>%
-  mutate(
-    age_group = case_when(
-      age_group == 1 ~ "18-24",
-      age_group == 2 ~ "25-34",
-      age_group == 3 ~ "35-44",
-      age_group == 4 ~ "45-54",
-      age_group == 5 ~ "55-64",
-      age_group == 6 ~ "65+",
-      age_group == 7 ~ "Prefer not to say",
-      age_group == 8 ~ "Under 18",
-      TRUE ~ as.character(age_group)
-    )
-  )
-
-# Recode remote_work
-df <- df %>%
-  mutate(
-    remote_work = case_when(
-      remote_work == 1 ~ "Hybrid",
-      remote_work == 2 ~ "In-person",
-      remote_work == 3 ~ "Remote",
-      TRUE ~ as.character(remote_work)
     )
   )
 
@@ -149,7 +115,6 @@ df <- df %>%
   )
 
 
-
 # Recode ai_threat
 df <- df %>%
   mutate(
@@ -174,7 +139,21 @@ df <- df %>%
     )
   )
 
+#recode ai_acc
 
+#ai_acc,1,Highly distrust
+#ai_acc,2,Highly trust
+#ai_acc,3,Neither trust nor distrust
+#ai_acc,4,Somewhat distrust
+#ai_acc,5,Somewhat trust
+
+df <- df %>%
+  mutate(ai_acc = recode(ai_acc,
+                                `1` = 1,  # Highly distrust
+                                `4` = 2,  # Somewhat distrust
+                                `3` = 3,  # Neutral
+                                `5` = 4,  # Somewhat trust
+                                `2` = 5)) # Highly trust
 
 
 df <- df %>% 
@@ -193,27 +172,65 @@ df <- df %>%
 
 ---
 
-## `R` is rich in statistical procedures
+## Last sessions
 
-Generally, if you seek to use a specific statistical method in `R`, chances are quite high that you can easily do that. As we've said before: There's ~~an app~~ a package for that. After all, `R` is a statistical programming language that was originally developed by statisticians.
+- We learned how to import/ export data
+- We learned how to wrangle data, subsets, create new variables, recode, merge, pivot
+
+
+---
+## Recap Distribution
+
+```{r fig.width= 5, fig.height=4}
+#plot first variable
+hist(df$ai_acc, 
+     col=rgb(0,0,1,0.25), 
+          breaks=10,
+     xlab='Trust in AI accuracy (blue) and complexity (red) ',
+     main='Distribution of AI Metrics'
+) 
+#add second variable
+hist(df$ai_complexity, 
+     col=rgb(1,0,0,0.25), 
+     breaks=10,
+     add=T)
+```
+
+
+---
+## Descriptive Statistics
+
+```{r}
+library(modelsummary)
+
+df.s <- df %>% 
+  dplyr::select(ai_complexity, ai_acc, ai_threat, visit_frequency) 
+
+datasummary_skim(df.s, output = 'flextable')
+
+```
 
 ---
 
-## Formulas in statistical software
+## Bivariate correlations
 
-Before we start analyzing data, we should make ourselves familiar with some more terminology in `R`. As in other statistical languages, e.g., regression models require the definition of dependent and independent variables. For example, in *Stata* you would write:
+```{r fig.width= 6, fig.height=4}
+# Subset and drop missings
+dt.com <- df %>% 
+  dplyr::select(ai_complexity, ai_acc, ai_threat, ai_sentiment,years_coding) %>% 
+  drop_na()
 
-```{r eval = FALSE}
-y x1 x2 x3
+#  corrplot
+library(corrplot)
+corrplot.mixed(cor(dt.com), lower.col = "black", number.cex = .7, insig='blank')
 ```
 
-*SPSS* is more literate by requiring you to state what your dependent variables are with the `/DEPENDENT` parameter.
 
 ---
 
 ## `R` is straightforward and literate
 
-`R` combines the best of two worlds: It is straightforward to write formulas and it is quite literate regarding what role a specific element of a formula plays.
+`R` combines the best of two worlds: It is straightforward to write formulas 
 
 ```{r eval = FALSE}
 y ~ x1 + x2 + x3
@@ -264,7 +281,8 @@ y ~ 1
 ---
 
 ## Adding predictors with `+`
-You can add as many predictors/covariates as you want with the simple `+` operator. See:
+You can add as many predictors/covariates as you want with the simple <span style="color:orange">`+`</span>
+ operator. See:
 
 ```{r eval = FALSE}
 y ~ 1 + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 +
@@ -281,13 +299,13 @@ y ~ .
 
 ## Interaction effects with `*` and `:`
 
-We can also easily add interaction effects to a model. As this is the same as multiplying predictor variables, we also use the `*` sign for that.
+We can also easily add interaction effects to a model. As this is the same as multiplying predictor variables, we also use the <span style="color:orange">**`*`**</span> sign for that.
 
 ```{r eval = FALSE}
 y ~ x1 * x2
 ```
 
-The code above creates a model formula that includes both the main effects of `x1` and `x2`, and their interaction denoted by `x1:x2`. We can even be more explicit and write that into the formula directly:
+The code above creates a model formula that includes both the <span style="background-color: yellow">main effects</span> of `x1` and `x2`, and their interaction denoted by <span style="background-color: yellow">`x1:x2`</span>. We can even be more explicit and write that into the formula directly:
 
 ```{r eval = FALSE}
 y ~ x1 + x2 + x1:x2
@@ -296,9 +314,9 @@ y ~ x1 + x2 + x1:x2
 
 ---
 
-## Transforming variables within a formula
+## **Transforming** variables within a formula
 
-One last point before we dive into doing some actual analysis is transforming variables. This procedure is rather common in regression analysis. It is also straightforward to do in `R`. For simple transformations this can be done as follows:
+For simple transformations this can be done as follows:
 
 ```{r eval = FALSE}
 y ~ log(x)   # computes the log10 for x
@@ -311,7 +329,7 @@ We could also change the data type of variables within a function, e.g., by conv
 
 ## Transforming variables within a formula
 
-If you cannot use a specific function for your tansformation, you have to wrap the operation in the `I()` function. For example:
+If you cannot use a specific function for your tansformation, you have to wrap the operation in the <span style="background-color: yellow">`I()`</span> function. 
 
 ```{r eval = FALSE}
 y ~ x + I(x^2) # add a quadratic term of x
@@ -329,10 +347,17 @@ The previous descriptions mainly refer to formulas used in regression models in 
 
 ## Testing group differences in the distribution
 
-A very common methods for analyzing group differences are t-tests. You can use the `t.test()` function from `base R` function to easily perform such a test. 
+A common method for analyzing group differences are t-tests. You can use the two-sample <span style="background-color: yellow">`t.test()`</span> function:
 
-```{r t-test, eval=FALSE}
-df_filtered <- df %>% filter(age_group %in% c("18-24", "35-44"))
+```{r t-test}
+df_filtered <- df %>%
+  filter(age_group >= 1, age_group <= 6) %>%
+  mutate(
+    age_group = case_when(
+      age_group >= 1 & age_group <= 3 ~ "1–3",
+      age_group >= 4 & age_group <= 6 ~ "4–6"
+    )
+  )
 
 t.test(ai_threat ~ age_group, data = df_filtered)
 
@@ -346,10 +371,12 @@ t.test(ai_threat ~ age_group, data = df_filtered)
 
 ## Test of normality
 
-What if our data are not normally distributed in the first place, thus, violating one of the basic assumptions of performing t-tests? To check this, we can use a [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test of normality.
+What if our data are <span style="background-color: orange">*not normally distributed*</span> in the first place, violating one of the basic assumptions of performing t-tests? To check this: [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test of normality.
 
 ```{r swt, eval=FALSE}
-shapiro.test(df$ai_trust)
+
+shapiro.test(df_filtered$age_group)
+
 ```
 
 ---
@@ -358,19 +385,21 @@ shapiro.test(df$ai_trust)
 
 If the data are not normally distributed, the [Wilcoxon/Mann-Whitney](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test) test can be a suitable alternative.
 
-```{r wilcox, eval=FALSE}
-wilcox.test(ai_trust ~ ai_threat, data = df)
+```{r wilcox}
+
+wilcox.test(ai_trust ~ age_group, data = df_filtered)
+
 ```
 
 ---
 
 ## Testing multiple groups with an ANOVA
 
-There are situations in which we want to test differences across multiple groups. The classic method to use for this is an analysis of variance (ANOVA) and its many variants (ANCOVA, MANOVA, etc.). Again, you can easily do that in `R` using the `aov()` function.
+There are situations in which we want to test differences across multiple groups. The classic method to use for this is an analysis of variance (ANOVA) and its many variants (ANCOVA, MANOVA, etc.). 
 
 ```{r anova}
-anova <- aov(ai_trust ~ age_group, data = df)
-
+#One-way anova
+anova <- aov(ai_trust  ~ country, data = df)
 anova
 ```
 
@@ -378,9 +407,10 @@ anova
 
 ## Testing multiple groups with an ANOVA
 
-To get some more detailed information, you need to use the `summary()` function we have already seen in the EDA session on the resulting `anova` object.
+To get some more detailed information, you need to use the `summary()` function we have already seen in the EDA session on the resulting `anova` object. 
 
 ```{r anova-summary}
+#F-test
 summary(anova)
 ```
 
@@ -388,10 +418,11 @@ summary(anova)
 
 ## Post-hoc test
 
-Unfortunately, the previous output only indicates that there are statistically significant differences in the groups. To find out which groups differ from each other we can, for example, compute *Tukey Honest Significant Differences*.
+The previous output only indicates that there are statistically significant differences in the groups. To find out which groups differ from each other we can, for example, compute *Tukey Honest Significant Differences*.
 
 ```{r tukey, eval=FALSE}
 TukeyHSD(anova)
+
 ```
 
 
@@ -399,12 +430,12 @@ TukeyHSD(anova)
 
 ## Simple linear regressions
 
-This may not come as a surprise at this point, but regression models are also easy to perform in `R`. The function for this is `lm()`. 
+Estimating a linear model (OLS). The function for this is <span style="background-color: orange">`lm()`</span>. 
 
 ```{r linmodel, eval = FALSE}
 simple_linear_model <- 
   lm(
-    ai_trust ~ main_branch + participation_frequency +years_coding, 
+    ai_trust ~ main_branch + participation_frequency + ai_threat+  ai_sentiment, 
     data = df
   )
 
@@ -420,6 +451,16 @@ class: middle
 ```{r ref.label = "linmodel", echo = FALSE}
 ```
 ]
+
+---
+## OLS Model Summary
+
+```{r}
+library(parameters)
+
+model_parameters(simple_linear_model)
+```
+
 
 ---
 
@@ -442,57 +483,123 @@ class: middle
 ]
 
 ---
+## Quick model inspection 
 
-## Checking regression assumptions
-
-As in the case of ANOVA, we do not cover the topic of testing regression assumptions in this session. Of course, when you do some actual analyses, you should definitely do that. But if you want more information about this issue, there are plenty of good tutorials online (such as [this blog post by Ian Ruginski](https://www.ianruginski.com/post/regressionassumptions/) or [this chapter](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/testing-regression-assumptions.html) in the online book [*R for Survey Analysis*](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/)).
+```{r fig.width= 9, fig.height=6}
+par(mfrow = c(2, 2))
+plot(simple_linear_model)
+```
 
 ---
 
-## Dummy coding of categorical predictors
+## Assumption checks
+easystats provides some nice features for inspecting model fit. Here's a simple check for normality of the residuals. It is a combination of using a function from the performance package and then using see to plot it.
 
-As you have seen, `R` automatically converts factors in a regression model to dummy-coded variables, with the reference being the first value level. Hence, there is no need to create several variables with dummy codes and add them one by one to the regression formula. 
-
-You can inspect the contrast matrix using:
-
-.pull-left[
-```{r contrast-matrix, eval = FALSE}
-contrasts(df$age_group)
+```{r eval=FALSE}
+library(performance)
+library(see)
+check_normality(linear_model) %>% 
+  plot()
 ```
-]
 
-.pull-right[
-```{r ref.label = "contrast-matrix", echo = FALSE, eval=FALSE}
+QQ Plot
+```{r eval=FALSE}
+check_normality(simple_linear_model) %>% 
+  plot(type = "qq")
 ```
-]
+Heteroscedascity
+
+```{r eval=FALSE}
+check_heteroscedasticity(
+  linear_model
+) %>% 
+  plot()
+
+```
+
+---
+## Overview of model checks (*performance* package)
+
+```{r fig.width= 9, fig.height=6}
+check_model(simple_linear_model)
+```
+
+
+---
+
+## Checking regression assumptions
+
+As in the case of ANOVA, check regression assumptions. There are plenty of good tutorials online (such as [this blog post by Ian Ruginski](https://www.ianruginski.com/post/regressionassumptions/) or [this chapter](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/testing-regression-assumptions.html) in the online book [*R for Survey Analysis*](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/)).
+
+
+---
+## Why robust?
+
+You can make your linear regression provide **robust** or clustered **standard errors**. One convenient way is the **`fixest`** package. The syntax is very similar to lm. But we specify fixed effects slightly differently by using the | symbol.
+
+Alternatively, we can use the <span style="background-color: orange">lm_robust()</span> function from the `estimatr` package.
+
+
+---
+## Robust Standard Errors
+
+```{r}
+library(fixest)
+
+model.lm.1.robust<-feols(ai_trust ~ main_branch + participation_frequency + factor(age_group) + 
+                           ai_threat + ai_sentiment | country, # fixed effects per country
+                         vcov = "hetero", # heteroskedastic robust SEs
+                         data = df_filtered)
+
+summary(model.lm.1.robust)
+
+```
+
+
+---
+## Generalized linear regressions 
+There are a multitude of other estimators/link functions, so-called **family objects**, e.g., binomial logistic or Poisson regression through the `glm()` function. See `?family` for an overview.
+
+
+- <span style="background-color: orange">logistic</span> (`glm ( y ~ x, family = 'binomial`)) for binary data,
+- <span style="background-color: orange">Poisson</span> (`glm ( y ~ x, family = 'poisson`)) for count data,
+- <span style="background-color: orange">negative binomial</span> for overdispersed count data (`glm( y ~ x, family = 'quasipoisson`))
 
 
 ---
 
 ## Generalized linear regression
 
-What we have seen so far are estimates for linear OLS regression models. A standard `R` installation provides a multitude of other estimators/link functions, so-called family objects, e.g., binomial logistic or Poisson regression models through the `glm()` function. See `?family` for an overview.
+Let's look at the the example of logistic regression.
 
-Let's look at the the example of logistic regression. For this  purpose, say we are interested in the effect of the binary indicator of ai threat on all the other variables.
+```{r log-reg}
+#keep relevant predictors and complete cases
+df_model <- df %>%
+  filter(!is.na(r_used)) %>%
+  select(
+    r_used,
+    main_branch,
+    age_group,
+    education_level,
+    participation_frequency,
+    ai_sentiment,
+    ai_threat,
+    ai_complexity,
+    years_coding,
+    community_belief
+  ) %>%
+  drop_na()
 
-```{r table-trust}
-table(df$ai_threat)
-```
+# Fit the logistic regression model
+model_r_used <- glm(
+  r_used ~ .,
+  data = df_model,
+  family = binomial()
+)
 
----
+# View summary
+summary(model_r_used)
 
-## Logistic regression
-
-```{r log-reg, eval =FALSE}
-
-simple_model_logistic <- 
-  glm(
-    ai_threat ~ participation_frequency  + years_coding , 
-    family = binomial(link = "logit"),
-    data = df
-  )
-
-summary(simple_model_logistic)
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -501,7 +608,7 @@ summary(simple_model_logistic)
 
 class: middle
 .small[
-```{r ref.label = "log-reg", echo = FALSE, eval=FALSE}
+```{r ref.label = "log-reg", echo = FALSE}
 
 ```
 ]
@@ -570,7 +677,7 @@ While `glm()` already provides quite a few estimators and link functions, depend
 
 ## Handling regression results
 
-While it is (still) common practice to run regressions, search for 'significant' p-values, and paste the results into a table without interpreting them substantially, this may not be the best thing to do.
+While it is (still) common practice to run regressions, search for 'significant' `p`-values, and paste the results into a table without interpreting them substantially, this may not be the best thing to do.
 
 ---
 

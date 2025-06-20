@@ -1,0 +1,204 @@
+---
+title: 'Exercise: Regression reporting'
+author: 'Veronika Batzdorfer'
+date: 'Data Literacy: Introduction to R'
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r child = "./content/config/exercises_setup.Rmd"}
+```
+
+We will run some basic exploratory analyses and confirmatory analyses. 
+Load the data first. We are using the R build-in dataset `mtcars`
+
+```{r load}
+glimpse(mtcars)
+```
+
+In case you have not done so yet, please also install the `performance` package for this set of exercises.
+
+```{r}
+if (!require(performance)) install.packages("performance")
+```
+
+
+In addition to the `parameters` package, which we have already used in the previous exercises on regression analysis, this time we also need the following packages: `stargazer`, `report`, and `broom`. 
+
+```{r pkgs, eval = F}
+if (!require(stargazer)) install.packages("stargazer")
+if (!require(report)) install.packages("report")
+if (!require(broom)) install.packages("broom")
+```
+
+
+```{block, box.title = "1", box.body = list(fill = "white"), box.icon = "fa-star"}
+
+Check if the dataset mtcars contains any missing (NAs).
+Make a correlation plot of the variables in mtcars to show which predictors are correlated with each other, and which might introduce a problem of multicollinearity.
+```
+
+```{block, opts.label = "clues"}
+
+There must not be any missings for the correlation plot. You can use the library(corrplot) to make a plot.
+```
+
+```{r first-exercise, solution = TRUE}
+
+colSums(is.na(mtcars))
+
+corr_mt = cor(mtcars) 
+
+corrplot(corr_mt, method="color", addCoef.col="black", number.cex=0.5, type="lower")
+
+```
+
+Exploratory Analyses
+
+```{block, box.title = "2", box.body = list(fill = "white"), box.icon = "fa-star"}
+
+Show if there is a significant difference between `mpg` miles per gallon for transmission types `am` (automatic vs manual). Use a t-test for this and interpret it.
+
+Also make two boxplots for the two groups `am` (automatic vs manual) and `mpg` that shows the group comparison.
+
+```
+
+```{r second-exercise, solution = TRUE}
+#t-test-----
+t.test(mpg ~ am, data=mtcars)
+
+#boxplots--
+ggplot(mtcars, aes(factor(am), mpg)) + 
+  geom_boxplot() + 
+  geom_point(alpha=.8)+ 
+  theme_minimal() +
+  labs(x = "Transmission (0 = Automatic, 1 = Manual)", y = "Miles per Gallon (mpg)")
+
+
+```
+
+
+
+We need to run a regression analysis ...
+
+```{block, box.title = "3", box.body = list(fill = "white"), box.icon = "fa-star"}
+
+First, run a simple linear regression model with miles per gallon (`mpg`) as 
+the outcome and  `am` as 1 predictor. Save the model as an object.
+
+Second, run a second linear regression model with `mpg` as outcome and all other variables as predictors. Save the model as an object.
+```
+
+```{block, opts.label = "clues"}
+use the `lm` function
+
+```
+
+```{r third-exercise, solution = TRUE}
+# one-predictor
+
+fit_simple = lm(mpg~am, data=mtcars) 
+
+# all predictors
+
+fit_all <- lm(mpg ~ ., data = mtcars)
+```
+
+```{block, box.title = "4", box.body = list(fill = "white"), box.icon = "fa-star"}
+Compare both fitted models with each other in their performance. Interpret the results.
+```
+
+```{block, opts.label = "clues"}
+
+Use the `anova` function for this.
+```
+
+
+```{r fourth-exercise, solution = TRUE}
+anova(fit_simple, fit_all)
+
+```
+
+
+
+```{block, box.title = "5", box.body = list(fill = "white"), box.icon = "fa-star"}
+Using `base R`, print only the coefficients from the model.
+```
+
+```{block, opts.label = "clues"}
+You can use the same operator that you use in `base R` for accessing variables in a dataframe to select the element we want from the `lm` object.
+```
+
+```{r five-exercise, solution = TRUE}
+fit_all$coefficients
+```
+
+```{block, box.title = "6", box.body = list(fill = "white"), box.icon = "fa-star"}
+Using a function from a package that allows us to view model parameters, print some more interesting information on the results of our model (including confidence intervals and p-values) in a nice tabular format.
+```
+
+```{block, opts.label = "clues"}
+We can use a function from the `parameters` package for printing model parameters here.
+```
+
+```{r six-exercise, solution = TRUE}
+model_parameters(fit_all)
+```
+
+```{block, box.title = "7", box.body = list(fill = "white"), box.icon = "fa-star"}
+For further use in a publication, we also want to create a typical regression table using the `stargazer` package. We want the output to be in plain text format.
+```
+
+```{block, opts.label = "clues"}
+If you want to, you can also specify labels for the variables in your models as arguments in the `stargazer` function.
+```
+
+```{r seven-exercise, solution = TRUE}
+library(stargazer)
+
+stargazer(
+  fit_all,
+  type = "text"
+  )
+```
+
+
+```{block, box.title = "8", box.body = list(fill = "white"), box.icon = "fa-star"}
+Plot the model residuals. And interpret them.
+```
+
+```{r eight-exercise, solution = TRUE}
+
+par(mfrow=c(2,2))
+plot(fit_simple)
+
+```
+
+
+```{block, box.title = "9", box.body = list(fill = "white"), box.icon = "fa-star"}
+To produce custom tables and plots, we also want to store the key parameters of our model in a tidy tibble.
+```
+
+```{block, opts.label = "clues"}
+There's a function in the `broom` package for that.
+```
+
+```{r nintth-exercise, solution = TRUE}
+library(broom)
+
+tidy(fit_all)
+```
+
+```{block, box.title = "10", box.body = list(fill = "white"), box.icon = "fa-star"}
+Of course, we can't write a paper that just consists of tables and plots (though some would surely very much appreciate that). We also need to produce some actual text. We all know the "You should be writing" memes, so we're in luck that `R` can also help us out here as well. Let's use a function that produces some model language describing the results of our regression model. 
+```
+
+```{block, opts.label = "clues"}
+The package we can use to save some time that we would otherwise spend typing or copying and pasting is called `report`.
+```
+
+```{r 10th-exercise, solution = TRUE}
+library(report)
+
+report(fit_all)
+```
