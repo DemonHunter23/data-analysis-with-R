@@ -959,7 +959,7 @@ renderText({
 })
 ```
 
-<div id="out61418d670d4dbd1e" class="shiny-text-output"></div>
+<div id="outcdb822386e649d72" class="shiny-text-output"></div>
 
 ---
 
@@ -988,14 +988,13 @@ renderText({
 
 ``` r
 library(shiny)
-
-# UI layout with clear structure and purpose
+# UI layout 
 ui &lt;- fluidPage(
   titlePanel(&quot;Fancy App&quot;),
   
   sidebarLayout(
     
-    # Sidebar panel for user inputs or controls
+    # Sidebar panel 
     sidebarPanel(
       h4(&quot;Sidebar&quot;),
       p(&quot;Use this space for inputs like sliders, selectors, or buttons.&quot;)
@@ -1035,7 +1034,7 @@ server &lt;- function(input, output, session) {
 shinyApp(ui = ui, server = server)
 ```
 
-<iframe data-deferred-src="appfd627046d0651f3cf55df9d83c0e72ff/?w=&amp;__subapp__=1" width="100%" height="400" class="shiny-frame shiny-frame-deferred"></iframe>
+<iframe data-deferred-src="app9c78d2d4c12c1fbd243f1170e86d10e5/?w=&amp;__subapp__=1" width="100%" height="400" class="shiny-frame shiny-frame-deferred"></iframe>
 
 
 
@@ -1055,7 +1054,7 @@ head(flights)
 ```
 
 ```
-## # A tibble: 6 × 19
+## # A tibble: 6 × 20
 ##    year month   day dep_time sched_dep_time dep_delay arr_time
 ##   &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;
 ## 1  2013     1     1      517            515         2      830
@@ -1064,10 +1063,10 @@ head(flights)
 ## 4  2013     1     1      544            545        -1     1004
 ## 5  2013     1     1      554            600        -6      812
 ## 6  2013     1     1      554            558        -4      740
-## # ℹ 12 more variables: sched_arr_time &lt;int&gt;, arr_delay &lt;dbl&gt;,
+## # ℹ 13 more variables: sched_arr_time &lt;int&gt;, arr_delay &lt;dbl&gt;,
 ## #   carrier &lt;chr&gt;, flight &lt;int&gt;, tailnum &lt;chr&gt;, origin &lt;chr&gt;,
 ## #   dest &lt;chr&gt;, air_time &lt;dbl&gt;, distance &lt;dbl&gt;, hour &lt;dbl&gt;,
-## #   minute &lt;dbl&gt;, time_hour &lt;dttm&gt;
+## #   minute &lt;dbl&gt;, time_hour &lt;dttm&gt;, date &lt;date&gt;
 ```
 
 ---
@@ -1158,7 +1157,7 @@ renderPrint({
 })
 ```
 
-<pre class="shiny-text-output noplaceholder" id="out3ada11fdf5f96713"></pre>
+<pre class="shiny-text-output noplaceholder" id="outb16703a7e0d9e887"></pre>
 
 ---
 
@@ -1178,7 +1177,7 @@ renderPlot({
 })
 ```
 
-<div class="shiny-plot-output html-fill-item" id="out72917450d6a01b80" style="width:100%;height:400px;"></div>
+<div class="shiny-plot-output html-fill-item" id="out2b371c55ebd00559" style="width:100%;height:400px;"></div>
 ---
 
 ## Add Origin Selection to the Filter
@@ -1212,7 +1211,7 @@ renderPlot({
 })
 ```
 
-<div class="shiny-plot-output html-fill-item" id="out21c33f0e2ddfcfb8" style="width:100%;height:400px;"></div>
+<div class="shiny-plot-output html-fill-item" id="outc89b5ddbd63b6b01" style="width:100%;height:400px;"></div>
 
 ---
 
@@ -1227,7 +1226,7 @@ Add to the existing app:
 
 ---
 
-## Let&#39;s Add a Date Range Input
+## Let&#39;s add a Date Range Input
 
 
 ``` r
@@ -1260,7 +1259,7 @@ renderPlot({
 })
 ```
 
-<div class="shiny-plot-output html-fill-item" id="outa7e6c17631503d6a" style="width:100%;height:400px;"></div>
+<div class="shiny-plot-output html-fill-item" id="out1ef0c39bda9620c5" style="width:100%;height:400px;"></div>
 
 ---
 
@@ -1276,25 +1275,23 @@ renderPlot({
 
 ## Common Mistakes &amp; Debugging Tips
 
-   -  Forgetting `req()` before using an input
+-  Forgetting `req()` before using an input
 
-   -  Mixing up `render*` and `output$*`
+-  Mixing up `render*` and `output$*`
 
-   -  Not wrapping logic inside `reactive()` or render blocks
+-  Not wrapping logic inside `reactive()` or render blocks
 
-   -  Visuals not appearing? Check for missing `outputId` or input dependencies
+-  Visuals not appearing? Check for missing `outputId` or input dependencies
 
 ---
 
 ## Deployment Options
 
-    - shinyapps.io — official, free tier available
+- shinyapps.io — official, free tier available
 
-    - Shiny Server (on-premise or cloud)
+- Shiny Server (on-premise or cloud)
 
-    - Use flexdashboard + runtime: shiny for inline web reports
-
----
+- Use flexdashboard + runtime: shiny for inline web reports
 
 
 

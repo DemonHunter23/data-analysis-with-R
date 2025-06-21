@@ -120,14 +120,13 @@ renderText({
 
 ```{r}
 library(shiny)
-
-# UI layout with clear structure and purpose
+# UI layout 
 ui <- fluidPage(
   titlePanel("Fancy App"),
   
   sidebarLayout(
     
-    # Sidebar panel for user inputs or controls
+    # Sidebar panel 
     sidebarPanel(
       h4("Sidebar"),
       p("Use this space for inputs like sliders, selectors, or buttons.")
