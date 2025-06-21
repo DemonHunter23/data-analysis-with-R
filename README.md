@@ -63,8 +63,8 @@ By the end of the course participants should be:
 | **Tuesday** | **12:00 - 13:00** | **Excursion Shiny APP** |
 | *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
 | **Tuesday** | **14:00 - 14:30** | **Excursion LLMs in RStudio**            |
-|*Tuesday*     |*15:00 - 15:15* | *Break*                       |
-| **Tuesday** | **15:15 - 16:00** | **Group data challenge**      |
+|*Tuesday*     |*14:30 - 14:45* | *Break*                       |
+| **Tuesday** | **14:45 - 16:00** | **Group data challenge**      |
 
 
 
