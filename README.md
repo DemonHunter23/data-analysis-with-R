@@ -60,13 +60,13 @@ By the end of the course participants should be:
 ### Day 4: [24-06]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Tuesday** | **12:00 - 13:00** | **Run LLMs locally** |
-| *Tuesday* | *13:00 - 13:15*  | *Break*                             |
-| **Tuesday** | **13:15 - 14:00** | **LLMs in RStudio**            |
-|*Tuesday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Tuesday** | **15:00 - 16:00** | **Group data exploration**      |
-| *Tuesday* | *16:00 - 16:15*  | *Break*                             |
-| **Tuesday** | **16:15 - 17:00**  | **Group data exploration**     |
+| **Tuesday** | **12:00 - 13:00** | **Excursion Shiny APP** |
+| *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
+| **Tuesday** | **14:00 - 15:00** | **Excursion LLMs in RStudio**            |
+|*Tuesday*     |*15:00 - 15:15* | *Lunch Break*                       |
+| **Tuesday** | **15:00 - 16:00** | **Group data challenge**      |
+
+
 
 
 ---
