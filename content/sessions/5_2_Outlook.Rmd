@@ -334,7 +334,7 @@ renderPlot({
 
 ## Deployment Options
 
-- shinyapps.io — official, free tier available
+- shinyapps.io : official, free tier available
 
 - Shiny Server (on-premise or cloud)
 
