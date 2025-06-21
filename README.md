@@ -62,9 +62,9 @@ By the end of the course participants should be:
 |-------------|-----------------|--------------------------------------|
 | **Tuesday** | **12:00 - 13:00** | **[Excursion Shiny APP](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/4c277723ab55feb53e04ace25fe2036cdeb1d2ae/slides/5_2_Outlook.html)** |
 | *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
-| **Tuesday** | **14:00 - 14:30** | **Excursion LLMs in RStudio**            |
-|*Tuesday*     |*14:30 - 14:45* | *Break*                       |
-| **Tuesday** | **14:45 - 16:00** | **Group data challenge**      |
+| **Tuesday** | **14:00 - 14:20** | **Excursion Applications in R (LLMs)**            |
+|*Tuesday*     |*14:20 - 14:35* | *Break*                       |
+| **Tuesday** | **14:35 - 16:00** | **Group data challenge**      |
 
 
 
