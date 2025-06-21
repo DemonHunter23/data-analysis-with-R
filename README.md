@@ -64,7 +64,7 @@ By the end of the course participants should be:
 | *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
 | **Tuesday** | **14:00 - 14:20** | **[Excursion Applications in R (LLMs)](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/4423f9605080d80fbf33c1154bc770153186a37d/slides/5_3_ApplicationR.html)**            |
 |*Tuesday*     |*14:20 - 14:35* | *Break*                       |
-| **Tuesday** | **14:35 - 16:00** | **Group data challenge**      |
+| **Tuesday** | **14:35 - 16:00** | **[Group data challenge](https://github.com/rfordatascience/tidytuesday)**      |
 
 
 
