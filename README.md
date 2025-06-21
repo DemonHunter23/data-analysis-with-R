@@ -60,7 +60,7 @@ By the end of the course participants should be:
 ### Day 4: [24-06]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Tuesday** | **12:00 - 13:00** | **[Excursion Shiny APP](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/ca2d1759eada2aeb783a453cf69240de78e4014e/slides/5_2_Outlook.html)** |
+| **Tuesday** | **12:00 - 13:00** | **[Excursion Shiny APP](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/4c277723ab55feb53e04ace25fe2036cdeb1d2ae/slides/5_2_Outlook.html)** |
 | *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
 | **Tuesday** | **14:00 - 14:30** | **Excursion LLMs in RStudio**            |
 |*Tuesday*     |*14:30 - 14:45* | *Break*                       |
