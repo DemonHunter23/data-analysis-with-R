@@ -1,134 +1,24 @@
 ---
-title: "Data Literacy: Introduction to R "
-subtitle: "Outlook"
-author: "Veronika Batzdorfer"
-date: "2024-11-21"
+
+title: "Data Literacy: Introduction to R"
+subtitle: "Excursion Shiny App and LLMs"
+author: "otello"
+date: "2025-06-24"
 presenter: Veronika
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+runtime: shiny
 editor_options: 
   chunk_output_type: console
 ---
+
 
 layout: true 
 
 ```{r child = "./content/config/sessions_setup.Rmd", warning=FALSE}
 ```
-
----
-
-
-## Our jou`R`ney this week (hopefully)
-
-```{r mindblowing, echo = FALSE, out.width = "85%"}
-woRkshoptools::include_picture("r_pkgs_mindblowing.png")
-```
-.footnote[[Source](https://res.cloudinary.com/syknapptic/image/upload/v1521320144/tidyverse_meme_oceake.png)]
-
----
-
-## Resources: Introductory books
-
-[R for Data Science](https://r4ds.had.co.nz/) by Hadley Wickham
-
-[R Cookbook: Proven recipes for data analysis, statistics, and graphics](https://rc2e.com/) by JD Long & Paul Teetor
-
-[Hands-On Programming with R](https://rstudio-education.github.io/hopr/) by Garrett Grolemund
-
-[R Programming for Data Science](https://bookdown.org/rdpeng/rprogdatascience/) by Roger D. Peng
-
-[Quantitative Social Science Data with R](https://uk.sagepub.com/en-gb/eur/quantitative-social-science-data-with-r/book257236) by Brian J. Fogarty
-
-[Introduction to R for Social Scientists - A Tidy Programming Approach](https://www.routledge.com/Introduction-to-R-for-Social-Scientists-A-Tidy-Programming-Approach/Kennedy-Waggoner/p/book/9780367460723) by Ryan Kennedy & Philip D. Waggoner
-
-[Quantitative Social Science: An Introduction in tidyverse](https://press.princeton.edu/books/hardcover/9780691222271/quantitative-social-science) by Kosuke Imai & Nora Webb Williams
-
----
-
-## Resources: Online courses & tutorials
-
-- Overview of resources
-  - [*learnR4free*](https://www.learnr4free.com/) by Mine Dogucu
-  - the [*Big Book of R*](https://www.bigbookofr.com/) by Oscar Baruffa
-
-- [*swirl* - Learn `R` in `R`](https://swirlstats.com/)
-
-- Learning `R` (and statistics) with a cute story: [Teacups, Giraffes, & Statistics by Hasse Wallum & Desirée de Leon](https://tinystats.github.io/teacups-giraffes-and-statistics/)
-
----
-
-## Working with text data in `R`
-
-As with almost everything else, there are many great resources for working with text data in `R`. Two good options (and starting points) are:
-- the [`tidytext` package](https://juliasilge.github.io/tidytext/) and the "accompanying" book [*Text Mining with R: A Tidy Approach*](https://www.tidytextmining.com/) by Julia Silge & David Robinson
-- the [`quanteda` package](https://quanteda.io/) and its accompanying [tutorials](https://tutorials.quanteda.io/)
-
-- a nice and free self-paced online course is [*Text mining in R for the social sciences and digital humanities*](https://tm4ss.github.io/docs/index.html) by Andreas Niekler and Gregor Wiedemann
-
----
-
-## What Are Geospatial Data?
-
-.pull-left[
-Data with a direct spatial reference $\rightarrow$ **geo-coordinates**
-- Information about geometries
-- Optional: Content in relation to the geometries
-
-Can be projected jointly in one single space
-- Allows data linking and extraction of substantial information
-]
-
-.pull-right[
-```{r pic-geometries-1, echo = FALSE, out.width = "85%"}
-woRkshoptools::include_picture("fig_geometries.png")
-```
-
-.tinyisher[Sources: OpenStreetMap / GEOFABRIK (2018), City of Cologne (2014), and the Statistical Offices of the Federation and the Länder (2016) / Jünger, 2019]
-]
-
----
-
-## [Mapping](https://cran.r-project.org/web/packages/mapsf/vignettes/mapsf.html) is so easy nowadays
-
-.pull-left[
-```{r mapsf, eval = FALSE}
-library(mapsf)
-
-mtq <- mf_get_mtq()
-
-mf_map(x = mtq)
-mf_map(x = mtq, var = "POP", type = "prop")
-mf_layout(
-  title = "Population in Martinique", 
-  credits = "T. Giraud; Sources: INSEE & IGN, 2018"
-)
-```
-]
-
-.pull-right[
-```{r mapsf-print, echo = FALSE}
-library(mapsf)
-
-mtq <- mf_get_mtq()
-
-mf_map(x = mtq)
-mf_map(x = mtq, var = "POP", type = "prop")
-mf_layout(
-  title = "Population in Martinique", 
-  credits = "T. Giraud; Sources: INSEE & IGN, 2018"
-)
-```
-]
-
-Example from: https://riatelab.github.io/mapsf/
-
-
----
-
-## 'Web development' using `R`
-
-These days, a lot of `R` packages provide tools originally developed for the web. For example:
-- [bookdown](https://pkgs.rstudio.com/bookdown/) enables you to publish books written in `R Markdown` online
-- [pkgdown](https://pkgdown.r-lib.org/) does the same for your own `R` packages
-- [blogdown](https://pkgs.rstudio.com/blogdown/l) is more general and helps you with creating websites (examples to follow)
 
 ---
 
@@ -153,6 +43,335 @@ class: middle
 ## Example 2: CRAN explorer
 
 .center[https://gallery.shinyapps.io/cran-explorer/]
+
+
+---
+
+## Why Use Shiny?
+
+- Build interactive applications using only R
+
+- Enables data exploration with dynamic UI
+
+- Deployable as dashboards or embedded in reports
+
+- Popular in health, public sector, finance, academia
+
+
+
+---
+## Anatomy of a Shiny App
+
+
+Every Shiny app has 3 key parts:
+
+- .highlight[UI] (user interface)
+
+- .highlight[Server] (logic + reactivity)
+
+- .highlight[Input/output bindings] – Links user actions (**ui**) and app responses (**server**)
+  
+
+---
+
+## Let’s explore a simple Shiny interaction 
+
+Pick a number 
+```{r}
+library(shiny)
+
+# UI element
+sliderInput("num", "Pick a number", min = 1, max = 100, value = 50)
+
+```
+
+Result (reactive output)
+```{r}
+# Output definition
+renderText({
+  paste("Double of your number is:", input$num * 2)
+})
+
+```
+
+---
+
+## Key Concepts in Shiny:
+
+- Reactive .highlight[Inputs]: Values from widgets like sliders, text boxes, select menus
+
+- Reactive .highlight[Outputs]: renderText, renderPlot, renderTable, etc.
+
+- Reactive .highlight[Expressions]: Efficient computations that depend on inputs
+---
+## Shiny Front-End Anatomy: UI Layout
+
+- `fluidPage()`: most basic layout
+
+  - rows containing columns
+  - rows making sure elements appear on the same line
+
+- UI input: Logic: Widget = Web element the user can interact with [Shiny widget gallery](https://shiny.posit.co/r/gallery/widgets/widget-gallery/)
+
+
+---
+
+### Try this code in your console for a simple UI
+
+```{r}
+library(shiny)
+
+# UI layout with clear structure and purpose
+ui <- fluidPage(
+  titlePanel("Fancy App"),
+  
+  sidebarLayout(
+    
+    # Sidebar panel for user inputs or controls
+    sidebarPanel(
+      h4("Sidebar"),
+      p("Use this space for inputs like sliders, selectors, or buttons.")
+    ),
+    
+    # Main panel for outputs and content
+    mainPanel(
+      h4("Main Content"),
+      
+      # 3 columns 
+      fluidRow(
+        column(4,
+               h5("Description"),
+               p("This area is for explaining what the app does.")
+        ),
+        
+        column(4,
+               h5("Model Output"),
+               p("Use this section to show summaries, tables, or results.")
+        ),
+        
+        column(4,
+               h5("Visualization"),
+               p("Render plots or graphics here.")
+        )
+      )
+    )
+  )
+)
+
+# Server logic placeholder
+server <- function(input, output, session) {
+  # This is where server-side reactivity will go
+}
+
+# Run the app
+shinyApp(ui = ui, server = server)
+
+```
+
+
+
+---
+
+## Loading and Exploring the Flights Dataset
+
+We’ll use `nycflights13::flights` for a real-world example.
+
+```{r}
+library(nycflights13)
+library(dplyr)
+library(ggplot2)
+
+head(flights)
+
+```
+
+---
+
+## Filter Flights from JFK in January
+
+```{r}
+flights %>%
+  filter(origin == "JFK", month == 1) %>%
+  group_by(carrier) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) %>%
+  arrange(desc(mean_arr_delay))
+
+```
+---
+
+## TASK 1: Data Wrangling Warm-up (10 min)
+
+Use dplyr to answer:
+
+- Which carrier has the longest average arrival delay?
+
+- What is the shortest average air time from LGA?
+
+---
+
+## Interactive Carrier Selection
+
+Select a carrier below to view data:
+
+```{r}
+selectInput("carrier_sel", "Choose a carrier:",
+            choices = unique(flights$carrier))
+
+```
+
+Summary Statistics
+```{r}
+renderPrint({
+  req(input$carrier_sel)
+  flights %>%
+    filter(carrier == input$carrier_sel) %>%
+    summarise(
+      mean_delay = mean(arr_delay, na.rm = TRUE),
+      sd_delay = sd(arr_delay, na.rm = TRUE),
+      flights = n()
+    )
+})
+
+```
+
+---
+
+## Visualize Delays by Carrier
+
+```{r}
+renderPlot({
+  req(input$carrier_sel)
+  flights %>%
+    filter(carrier == input$carrier_sel) %>%
+    ggplot(aes(x = arr_delay)) +
+    geom_histogram(binwidth = 5, fill = "#0073C2FF", color = "white") +
+    xlim(-50, 200) +
+    labs(title = paste("Arrival Delay for", input$carrier_sel),
+         x = "Arrival Delay (min)", y = "Count")
+})
+
+```
+---
+
+## Add Origin Selection to the Filter
+
+```{r}
+
+selectInput("origin_sel", "Choose origin airport:",
+            choices = unique(flights$origin))
+```
+
+```{r}
+renderPlot({
+  req(input$carrier_sel, input$origin_sel)
+  flights %>%
+    filter(carrier == input$carrier_sel, origin == input$origin_sel) %>%
+    ggplot(aes(x = arr_delay)) +
+    geom_histogram(binwidth = 5, fill = "#D55E00", color = "white") +
+    labs(title = paste("Delays for", input$carrier_sel, "from", input$origin_sel),
+         x = "Arrival Delay (min)", y = "Count")
+})
+
+```
+
+---
+
+## TASK 2: Multi-Input Filtering (15 min)
+
+Add to the existing app:
+
+- A date filter (hint: use `lubridate::make_date`(year, month, day))
+
+- A scatterplot of `dep_delay` vs. `arr_delay` with color = destination
+
+
+---
+
+## Let's add a Date Range Input
+
+```{r}
+dateRangeInput("date_range", "Select date range:",
+               start = "2013-01-01", end = "2013-01-31")
+
+```
+
+```{r}
+renderPlot({
+  req(input$carrier_sel, input$date_range)
+  flights %>%
+    filter(carrier == input$carrier_sel) %>%
+    mutate(date = as.Date(time_hour)) %>%
+    filter(date >= input$date_range[1], date <= input$date_range[2]) %>%
+    ggplot(aes(x = dep_delay, y = arr_delay, color = dest)) +
+    geom_point(alpha = 0.5) +
+    labs(title = "Departure vs. Arrival Delay", x = "Departure Delay", y = "Arrival Delay")
+})
+
+```
+
+---
+
+## TASK 3: Build Your Own Mini Dashboard (30 min)
+
+- Choose an aspect of the flights dataset to explore
+
+- Design at least two inputs and two outputs
+
+- Add interactivity (e.g. filtering, comparison, visualization)
+
+---
+
+## Common Mistakes & Debugging Tips
+
+-  Forgetting `req()` before using an input
+
+-  Mixing up `render*` and `output$*`
+
+-  Not wrapping logic inside `reactive()` or render blocks
+
+-  Visuals not appearing? Check for missing `outputId` or input dependencies
+
+---
+
+## Deployment Options
+
+- shinyapps.io — official, free tier available
+
+- Shiny Server (on-premise or cloud)
+
+- Use flexdashboard + runtime: shiny for inline web reports
+
+
+
+---
+## Resources: Online courses & tutorials
+
+- Overview of resources
+  - [*learnR4free*](https://www.learnr4free.com/) by Mine Dogucu
+  - the [*Big Book of R*](https://www.bigbookofr.com/) by Oscar Baruffa
+
+- [*swirl* - Learn `R` in `R`](https://swirlstats.com/)
+
+- Learning `R` (and statistics) with a cute story: [Teacups, Giraffes, & Statistics by Hasse Wallum & Desirée de Leon](https://tinystats.github.io/teacups-giraffes-and-statistics/)
+
+---
+
+## Working with text data in `R`
+
+As with almost everything else, there are many great resources for working with text data in `R`. Two good options (and starting points) are:
+- the [`tidytext` package](https://juliasilge.github.io/tidytext/) and the "accompanying" book [*Text Mining with R: A Tidy Approach*](https://www.tidytextmining.com/) by Julia Silge & David Robinson
+- the [`quanteda` package](https://quanteda.io/) and its accompanying [tutorials](https://tutorials.quanteda.io/)
+
+- a nice and free self-paced online course is [*Text mining in R for the social sciences and digital humanities*](https://tm4ss.github.io/docs/index.html) by Andreas Niekler and Gregor Wiedemann
+
+---
+
+## 'Web development' using `R`
+
+These days, a lot of `R` packages provide tools originally developed for the web. For example:
+- [bookdown](https://pkgs.rstudio.com/bookdown/) enables you to publish books written in `R Markdown` online
+- [pkgdown](https://pkgdown.r-lib.org/) does the same for your own `R` packages
+- [blogdown](https://pkgs.rstudio.com/blogdown/l) is more general and helps you with creating websites (examples to follow)
 
 
 ---

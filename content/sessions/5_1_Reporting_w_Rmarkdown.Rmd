@@ -6,7 +6,6 @@ date: "2025-06-23"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
-
 ---
 
 layout: true
