@@ -64,7 +64,7 @@ By the end of the course participants should be:
 | *Tuesday* | *13:00 - 14:00*  | *Lunch Break*                             |
 | **Tuesday** | **14:00 - 15:00** | **Excursion LLMs in RStudio**            |
 |*Tuesday*     |*15:00 - 15:15* | *Lunch Break*                       |
-| **Tuesday** | **15:00 - 16:00** | **Group data challenge**      |
+| **Tuesday** | **15:15 - 16:00** | **Group data challenge**      |
 
 
 
