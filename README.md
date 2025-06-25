@@ -77,9 +77,8 @@ By the end of the course participants should be:
 | *Wednesday* | *13:00 - 13:15*  | *Break*                             |
 | **Wednesday** | **13:15 - 14:00** | **Group data challenge**            |
 |*Wednesday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Wednesday** | **15:00 - 16:00** | **Group presentations**      |
-| *Wednesday* | *16:00 - 16:15*  | *Break*                             |
-| **Wednesday** | **16:15 - 17:00**  | **Wrap-up**     |
+| **Wednesday** | **15:00 - 16:00** | **Group presentations and Wrap-up**      |
+
 
 
 
