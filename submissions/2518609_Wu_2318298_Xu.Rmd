@@ -1,0 +1,395 @@
+---
+title: "Employed Status"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+date: "`r Sys.Date()`"
+---
+
+```{r setup,include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+options(scipen = 15)
+
+```
+
+```{r Library}
+library(tidyverse)
+library(patchwork)
+library(scales)
+library(ggplot2)
+library(broom)
+```
+
+```{r Data_load_clean, echo = FALSE}
+employed <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2021/2021-02-23/employed.csv')
+earn <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2021/2021-02-23/earn.csv')
+
+employed_cleaned <- employed %>%
+  drop_na() %>%
+  filter(industry != "Mining, quarrying, and\r\noil and gas extraction")
+
+earn_filtered <- earn %>%
+  filter(!age %in% c("16 years and over", "16 to 24 years", "55 years and over" , "25 years and over","25 to 54 years")) %>% 
+  filter(!is.na(age), !is.na(year), !is.na(median_weekly_earn))   
+
+```
+
+# Dataset Information
+
+Diese Daten enthalten zwei csv-Dateien („Employed“, „Earn“). Die beiden Tabellen zeigen die Anzahl der Arbeitnehmer in der Industrie und die Einkommen der verschiedenen Gruppen von Personen.
+
+Nach dem Laden der Daten entfernen wir einige Fehler oder Doppelungen aus dem Datensatz mithilfe von Methoden (z. B. drop_na(), filter()). Hier ist ein Überblick über den angepassten Datensatz.
+```{r Data_Show}
+cat("**employed.csv:**\n")
+glimpse(employed_cleaned)
+cat("**earn.csv:**\n")
+glimpse(earn_filtered)
+```
+## Richtungen von Analysen
+1. Analyse von der Beschäftigung
+2. Einkommen der verschiedenen Personengruppen
+
+# Analyse von der Beschäftigung
+## Trends der Beschäftigung in verschiedenen Industrien
+Wir haben die sechs interessierenden Industrien aus allen Daten herausgefiltert und die Trends der Beschäftigungszahlen im Zeitverlauf für diese sechs Industrien aufgezeichnet.
+
+```{r Trends_der_Beschäftigungszahlen}
+
+employed_filtered <- employed_cleaned %>%
+  filter(industry %in% c(
+    "Construction",
+    "Manufacturing",
+    "Information",
+    "Financial activities",  # Finacial
+    "Education and health services",
+    "Public administration"
+  ))
+
+industry_trend <- employed_filtered %>%
+  filter(race_gender == "TOTAL") %>%
+  group_by(industry, year) %>%
+  summarise(total_employment = mean(industry_total, na.rm = TRUE), .groups = "drop") %>%
+  arrange(year, industry)
+
+ggplot(industry_trend, aes(x = year, y = total_employment,
+                           color = industry, fill = industry)) +
+  geom_line(size = 1) +               
+  geom_area(alpha = 0.1, position = "identity") +  
+  labs(title = "Employment Trends by Selected Industries",
+       x = "Year",
+       y = "Total Employment") +
+  theme_bw() +
+  # theme(legend.position = "bottom") +
+  scale_y_continuous(labels = scales::comma)
+
+```
+
+Das Diagramm zeigt, dass der Betrag der Veränderung in jedem Jahr im Vergleich zur Gesamtbeschäftigung gering ist. Daher haben wir die absolute Veränderung von Jahr zu Jahr berechnet. Dies ist in dem folgenden Diagramm dargestellt.
+```{r }
+# absolute change
+industry_changes <- employed_filtered %>%
+  group_by(industry, year) %>%
+  summarise(total_employment = mean(industry_total, na.rm = TRUE), .groups = "drop") %>%
+  arrange(industry, year) %>%
+  group_by(industry) %>%
+  mutate(change = total_employment - lag(total_employment)) %>% 
+  filter(!is.na(change))  
+
+ggplot(industry_changes, aes(x = year, y = change, color = industry)) +
+  geom_line(size = 1.2, alpha = 0.8) +               
+  geom_point(size = 2.5, alpha = 0.8) +              
+  geom_area(aes(fill = industry), alpha = 0.2, position = "identity") +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40", size = 0.5) +  
+  labs(title = "Absolute change in total employment",
+       x = "Year",
+       y = "Absolute Change",
+       color = "Industry",
+       fill = "Industry") +
+  theme_bw() +
+  theme(
+    legend.position = "right",
+    # legend.box = "horizontal",
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank()
+  ) +
+  scale_y_continuous(labels = scales::comma)
+  # scale_x_continuous(breaks = unique(industry_changes$year)) +  
+  # guides(color = guide_legend(nrow = 2),
+  #        fill = guide_legend(nrow = 2))
+
+```
+Analyse: Die Veränderungen in den sechs Branchen sind nicht groß, jedoch gab es im Jahr 2019 einen deutlichen Rückgang der Beschäftigtenzahlen in allen Branchen außer dem öffentlichen Sektor. Zudem ist die Zahl der Beschäftigten im Bildungsbereich deutlich höher als in den anderen Branchen.
+
+## Beschäftigunganteil von verschiedene Personengruppen
+
+Als Beispiel wird der Beschäftigungsanteil verschiedener Personengruppen in verschiedenen Industrien für das Jahr 2020 analysiert.
+
+Zunächst haben wir den Anteil für verschiedene Gender und verschiedene Races analysiert. 
+```{r}
+employed_gender_proportion <- employed_filtered %>%
+  group_by(industry, year, race_gender) %>%
+  summarise(industry_total = mean(industry_total, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(
+    names_from = race_gender,
+    values_from = industry_total
+  ) %>%
+  mutate(
+    Men_Percentage = scales::percent(Men/TOTAL, accuracy = 0.1),
+    Women_Percentage = scales::percent(Women/TOTAL, accuracy = 0.1),
+    White_Percentage = scales::percent(White/TOTAL, accuracy = 0.1),
+    Black_Percentage = scales::percent(`Black or African American`/TOTAL, accuracy = 0.1),
+    Asian_Percentage = scales::percent(Asian/TOTAL, accuracy = 0.1)
+  ) %>%
+  select(industry, year, Men_Percentage, Women_Percentage, White_Percentage, Black_Percentage, Asian_Percentage) %>%
+  arrange(industry, year)
+
+
+data_2020 <- employed_gender_proportion %>%
+  filter(year == 2020) %>%
+  mutate(
+    Men = as.numeric(gsub("%", "", Men_Percentage))/100,
+    Women = as.numeric(gsub("%", "", Women_Percentage))/100,
+    White = as.numeric(gsub("%", "", White_Percentage))/100,
+    `Black or African American` = as.numeric(gsub("%", "", Black_Percentage))/100,
+    Asian = as.numeric(gsub("%", "", Asian_Percentage))/100
+  ) %>%
+  select(industry, Men, Women, White, `Black or African American`, Asian) %>%
+  pivot_longer(
+    cols = -industry,
+    names_to = "category",
+    values_to = "percentage"
+  )
+
+data_2020 %>%
+  filter(category %in% c("Men", "Women")) %>%
+  ggplot(aes(x = industry, y = percentage, fill = category)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+  scale_fill_manual(values = c("Men" = "#1f77b4", "Women" = "#ff7f0e")) +
+  labs(title = "Gender Percentage in year 2020",
+       x = "industry",
+       y = "Percentage",
+       fill = "Gender") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+data_2020 %>%
+  filter(category %in% c("White", "Black or African American", "Asian")) %>%
+  ggplot(aes(x = industry, y = percentage, fill = category)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+  scale_fill_manual(values = c("White" = "#2ca02c", "Black or African American" = "#d62728", "Asian" = "#9467bd")) +
+  labs(title = "Race Percentage in year 2020",
+       x = "industry",
+       y = "Percentage",
+       fill = "Race") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+```
+
+Analyse:
+Diagramm 1: Der Anteil der Männer im Construction ist wesentlich höher als der der Frauen. Im Education ist es umgekehrt.
+Diagramm 2: In allen Industrien in USA sind die White in der Mehrzahl, besonders in der Industrie Construction.
+
+
+# Einkommen der verschiedenen Personengruppen
+
+## Analyse nach Race
+So hat sich der durchschnittliche Wochenverdienst im Laufe der Jahre nach Race verändert
+```{r }
+# filter and get three races
+earn_filtered_race <- earn %>%
+  filter(race %in% c("White", "Black or African American", "Asian")) %>%
+  filter(!is.na(race), !is.na(year), !is.na(median_weekly_earn))
+
+# calculate median salary
+earn_race_year <- earn_filtered_race %>%
+  group_by(race, year) %>%
+  summarise(median_earn = mean(median_weekly_earn, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(year_int = floor(year))  
+
+
+ggplot(earn_race_year, aes(x = year_int, y = median_earn, color = race, group = race)) +
+  geom_line(size = 1) +
+  geom_point() +  
+  theme_minimal() +
+  labs(
+    title = "Median Weekly Earnings over Years by Race",
+    x = "Year",
+    y = "Median Weekly Earnings (USD)",
+    color = "Race"
+  ) +
+  scale_x_continuous(breaks = unique(earn_race_year$year_int)) +  
+  scale_color_brewer(palette = "Dark2")
+
+```
+
+
+Analyse: Aus dem Diagramm ist ersichtlich, dass das Lohnniveau aller ethnischen Gruppen steigt, wobei das Durchschnittseinkommen der asiatischen Bevölkerung durchgehend am höchsten ist.
+
+## Analyse nach Geschlecht
+
+```{r}
+# filter with gender 
+earn_box <- earn_filtered %>%
+  filter(sex %in% c("Men", "Women")) %>%
+  filter(!is.na(median_weekly_earn), !is.na(year))
+
+
+earn_box <- earn_box %>%
+  mutate(year_int = floor(year))
+
+
+ggplot(earn_box, aes(x = factor(year_int), y = median_weekly_earn, fill = sex)) +
+  geom_boxplot(outlier.alpha = 0.3, width = 0.7, position = position_dodge(0.8)) +
+  scale_fill_manual(values = c("Women" = "deeppink", "Men" = "dodgerblue")) +
+  labs(
+    title = "Distribution of Weekly Earnings by Sex Across Years",
+    x = "Year",
+    y = "Median Weekly Earnings (USD)",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Analyse: Wie aus dem Diagramm zu erkennen ist, sind die Durchschnittseinkommen sowohl von Männern als auch von Frauen im Laufe der Jahre gestiegen, aber das durchschnittliche Wocheneinkommen der Männer ist im Allgemeinen höher als das der Frauen.Bei den Männern ist die Einkommensspanne zwischen dem oberen und unteren Ende relativ groß.
+
+## Analyse nach Alter
+
+Hier ist der durchschnittliche Wochenverdienst nach Altersgruppen im Jahr 2016
+Die folgende Tabelle zeigt beispielsweise das Durchschnittseinkommen für jede Altersgruppe im Jahr 2016
+```{r}
+# 2016
+earn_2016 <- earn_filtered %>%
+  filter(year == 2016)
+
+
+earn_2016_grouped <- earn_2016 %>%
+  group_by(age) %>%
+  summarise(median_earn = mean(median_weekly_earn, na.rm = TRUE)) %>%
+  ungroup()
+
+
+age_levels <- c("16 to 19 years", "20 to 24 years", "25 to 34 years",
+                "25 years and over", "35 to 44 years", "45 to 54 years",
+                "55 to 64 years", "55 years and over", "65 years and over")
+
+
+earn_2016_grouped <- earn_2016_grouped %>%
+  filter(age %in% age_levels) %>%
+  mutate(age = factor(age, levels = age_levels))
+
+
+ggplot(earn_2016_grouped, aes(x = age, y = median_earn, fill = age)) +
+  geom_col() +
+  theme_minimal() +
+  labs(
+    title = "Median Weekly Earnings by Age Group (2016)",
+    x = "Age Group",
+    y = "Median Weekly Earnings (USD)"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3", name = "Age Group")
+
+```
+
+Analyse: Es ist erkennbar, dass mit zunehmendem Alter das Lohnniveau schrittweise steigt, jedoch sinkt es bei den über 65-Jährigen.
+
+Diese Grafik zeigt die Entwicklung des Durchschnittseinkommens nach Altersgruppen
+```{r}
+earn_by_age_year <- earn %>%
+  group_by(age, year) %>%
+  summarise(median_earn = mean(median_weekly_earn, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(!is.na(age))  
+
+
+existing_ages <- sort(unique(earn_by_age_year$age))
+earn_by_age_year$age <- factor(earn_by_age_year$age, levels = existing_ages)
+
+
+earn_by_age_year <- earn_by_age_year %>%
+  mutate(year_int = floor(year))  
+
+ggplot(earn_by_age_year, aes(x = year_int, y = median_earn, color = age, group = age)) +
+  geom_line(size = 1) +
+  theme_minimal() +
+  labs(
+    title = "Median Weekly Earnings by Age Group over Years",
+    x = "Year",
+    y = "Median Weekly Earnings (USD)",
+    color = "Age Group"
+  ) +
+  scale_x_continuous(breaks = unique(earn_by_age_year$year_int)) +  # 保证x轴每年都有刻度
+  scale_color_brewer(palette = "Set3")
+
+```
+
+Wir haben drei Altersgruppen ausgewählt und t-Tests durchgeführt. 
+
+```{r}
+
+earn_subset <- earn_filtered %>%
+  filter(age %in% c("20 to 24 years", "35 to 44 years", "65 years and over")) %>%
+  filter(!is.na(median_weekly_earn))
+
+
+age_pairs <- list(
+  c("20 to 24 years", "35 to 44 years"),
+  c("20 to 24 years", "65 years and over"),
+  c("35 to 44 years", "65 years and over")
+)
+
+
+t_results <- purrr::map_df(age_pairs, function(pair) {
+  group1 <- earn_subset %>% filter(age == pair[1]) %>% pull(median_weekly_earn)
+  group2 <- earn_subset %>% filter(age == pair[2]) %>% pull(median_weekly_earn)
+  
+  test <- t.test(group1, group2)
+  
+  tibble(
+    age_group_1 = pair[1],
+    age_group_2 = pair[2],
+    mean1 = mean(group1),
+    mean2 = mean(group2),
+    mean_diff = mean(group1) - mean(group2),
+    p_value = test$p.value,
+    significance = case_when(
+      test$p.value < 0.001 ~ "***",
+      test$p.value < 0.01  ~ "**",
+      test$p.value < 0.05  ~ "*",
+      TRUE                 ~ ""
+    )
+  )
+})
+
+
+print(t_results)
+
+```
+
+Analyse: Beim T-Test haben wir die Daten von drei Altersgruppen für Kreuzvergleiche ausgewählt. Dabei zeigte sich, dass der durchschnittliche Lohn der 20- bis 24-Jährigen im Vergleich zu den beiden anderen Altersgruppen sehr geringe p-Werte aufweist, was auf hochsignifikante Unterschiede hinweist. Im Vergleich dazu ist der Unterschied im durchschnittlichen Lohn zwischen der Gruppe der 35- bis 44-Jährigen und der über 60-Jährigen zwar immer noch signifikant, jedoch ist der p-Wert deutlich höher als bei den vorherigen Gruppen. Dies deutet darauf hin, dass das Lohnwachstum nach dem 35. Lebensjahr langsamer wird.
+
+# Fazit
+
+Die Analyse zeigt, dass sowohl die Beschäftigung als auch das Einkommen verschiedener Personengruppen in den letzten Jahren gewissen Trends folgen. Die Beschäftigtenzahlen in den betrachteten Industrien bleiben relativ stabil, mit einem auffälligen Rückgang im Jahr 2019 – ausgenommen der öffentliche Sektor. Besonders der Bildungsbereich weist konstant hohe Beschäftigungszahlen auf.
+
+Im Hinblick auf das Einkommen lässt sich feststellen, dass asiatische Bevölkerungsgruppen durchgehend das höchste durchschnittliche Wochengehalt erzielen. Männer verdienen im Durchschnitt mehr als Frauen, wobei ihre Einkommensspanne ebenfalls größer ist. Mit zunehmendem Alter steigt das Einkommen zunächst an, erreicht seinen Höhepunkt bei den 35- bis 44-Jährigen und nimmt danach leicht ab.
+
+Die Ergebnisse der T-Tests bestätigen, dass die Einkommensunterschiede zwischen jungen und älteren Altersgruppen signifikant sind. Besonders deutlich ist der Unterschied zwischen den 20- bis 24-Jährigen und den älteren Gruppen. Ab etwa 35 Jahren verlangsamt sich das Lohnwachstum jedoch spürbar.
+
