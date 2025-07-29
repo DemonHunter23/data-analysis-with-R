@@ -1,0 +1,406 @@
+---
+title: "Olympics"
+output:
+ html_document:
+   toc: true
+   toc_depth: 3
+   number_sections: true
+date: "2025-06-24"
+---
+
+# Hypothesis
+
+We hypothesize that a country’s economic strength, measured by GDP per capita, and its population size are positively associated with Olympic success, measured by the number of medals won.
+
+This hypothesis is based on the assumption that wealthier countries have more resources to invest in training facilities, sports infrastructure, and athlete development. In addition, more populous countries may benefit from a larger talent pool, increasing the probability of developing elite athletes.
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(WDI)
+library(tidyverse)
+library(visdat)
+library(janitor)
+library(pander)
+library(GGally)
+library(sjPlot)
+library(corrplot)
+library(patchwork)
+library(xtable)
+library(summarytools)
+library(modelsummary)
+library(performance)
+
+knitr::opts_chunk$set(echo = TRUE)
+options(xtable.comment = FALSE)
+
+start_year = 1976
+end_year = 2016
+
+```
+
+# Data
+
+## Load and Combine Data
+
+Our analysis is based on a dataset containing all Olympic medalists, including their discipline and country of origin. To contextualize their success, we merged this dataset with historical country-level data on GDP and population at the time the medals were won.
+
+This merging allowed us to evaluate Olympic performance not just in absolute terms, but in relation to the economic and demographic conditions of each country during the respective Olympic years.
+
+By aligning medal data with contemporaneous GDP and population figures, we were able to investigate how structural national factors may contribute to Olympic success and whether patterns exist across different economic and geographic contexts.
+
+```{r, echo=TRUE}
+olympics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-08-06/olympics.csv')
+noc_to_country = read.csv('../data/noc_to_country.csv', sep=",")
+
+olympics = left_join(olympics, noc_to_country) %>% 
+  filter(year >= 1976, year <= 2016)
+
+gdp_pop_data = WDI(country="all", indicator=c("SP.POP.TOTL", "NY.GDP.PCAP.CD", "NY.GDP.MKTP.CD"),
+                   start=start_year, end=end_year, extra=TRUE) %>%
+  mutate(
+    population = SP.POP.TOTL,
+    gdp_per_cap = NY.GDP.PCAP.CD,
+    gdp = NY.GDP.MKTP.CD
+  ) %>%
+  select(-SP.POP.TOTL, -NY.GDP.PCAP.CD, -NY.GDP.MKTP.CD)
+
+df = left_join(olympics, gdp_pop_data)
+```
+
+## Legend
+
+- **GDP**: Overall Gross Domestic Product of a country
+- **GDP per Capita**: Gross Domestic Product divided by the population; reflects average economic wealth per person.
+- **Population**: Total population of a country in a given year.
+- **Medal Count**: Total number of medals won (Gold, Silver, Bronze combined).
+- **Medals per Million**: Adjusts medal count by population size for fairness across countries.
+- **Income Group**: World Bank classification (e.g., High income, Upper middle income, etc.).
+- **Season**: Olympic type – Summer or Winter.
+
+## Data Overview
+
+```{r}
+print(dfSummary(df[c('gdp', 'gdp_per_cap', 'population', 'medal', 'income', 'season')], 
+                plain.ascii  = FALSE,
+                style        = "grid",
+                graph.magnif = 0.75,
+                varnumbers = FALSE,
+                valid.col    = FALSE,
+                tmp.img.dir  = "/tmp"), 
+      method = "render")
+```
+
+---
+
+# Exploratory Analysis
+
+## Total Medals by Country
+
+```{r, echo=TRUE}
+df %>%
+  filter(!is.na(medal)) %>%
+  count(country, sort = TRUE) %>%
+  top_n(20, n) %>%
+  ggplot(aes(x = reorder(country, n), y = n)) +
+  geom_col(fill = "#D55E00") +
+  coord_flip() +
+  labs(title = "Top 20 Countries by Total Olympic Medals",
+       x = "Country", y = "Number of Medals") +
+  theme_minimal()
+```
+
+To get an initial overview, we analyze the total medal distribution over the past 40 years (until 2016), across both Summer and Winter Olympic Games.
+
+We observe that the United States and Russia (formerly the Soviet Union, which have combined +2000 medals) clearly dominate the medal counts, followed by several Western European countries and economically strong nations from Asia.
+
+One possible explanation is that these countries not only have the economic power to invest in a wide variety of sports, but they are also often represented in many disciplines. This suggests that GDP and population size might already play a role in enabling broader sports funding.
+
+Geographic factors are relevant as well: for instance, countries in Africa are less likely to participate in winter sports due to climatic limitations, which naturally leads to fewer medals in those disciplines.
+
+To further investigate the economic dimension, we now take a closer look at GDP per capita.
+
+---
+
+## GDP per Capita vs. Medals – Summer Olympics
+
+```{r, echo=TRUE}
+df %>%
+  filter(season == "Summer", !is.na(medal), !is.na(gdp_per_cap)) %>%
+  group_by(country, year, gdp_per_cap) %>%
+  summarise(medals = n(), .groups = "drop") %>%
+  ggplot(aes(x = gdp_per_cap, y = medals)) +
+  geom_point(alpha = 0.6, color = "darkorange") +
+  scale_x_log10() +
+  labs(title = "Summer Olympics: GDP per Capita vs. Medal Count",
+       x = "GDP per Capita (log scale)", y = "Medal Count") +
+  theme_minimal()
+```
+
+Looking at the Summer Games, we find that medal counts tend to rise in countries with higher GDP per capita. Especially among countries with more than 20 medals per GDP, most are economically strong nations.
+
+This supports the assumption that wealth allows countries to build broad training systems, invest in athlete development, and fund participation across many disciplines.
+
+---
+
+## GDP per Capita vs. Medals – Winter Olympics
+
+```{r, echo=TRUE}
+df %>%
+  filter(season == "Winter", !is.na(medal), !is.na(gdp_per_cap)) %>%
+  group_by(country, year, gdp_per_cap) %>%
+  summarise(medals = n(), .groups = "drop") %>%
+  ggplot(aes(x = gdp_per_cap, y = medals)) +
+  geom_point(alpha = 0.6, color = "deepskyblue4") +
+  scale_x_log10() +
+  labs(title = "Winter Olympics: GDP per Capita vs. Medal Count",
+       x = "GDP per Capita (log scale)", y = "Medal Count") +
+  theme_minimal()
+```
+
+The relationship becomes even clearer when focusing on the Winter Games. Here, countries from Europe, North America, and parts of Asia (e.g. Japan, South Korea, China) dominate.
+
+These nations are not only economically strong but also geographically advantaged, with access to snow, mountains, and winter sports infrastructure. This likely contributes to the stronger trend: higher GDP per capita correlates even more strongly with winter sports success.
+
+---
+
+## Total Medals by Income Group
+
+GDP per capita reflects national economic output but does not directly indicate the income level of individual medal winners. To explore this further, we grouped countries by income level and analyzed total medal counts across these groups. The chart also includes a category labeled “NA,” which represents countries for which no income classification was available.
+
+```{r, echo=TRUE}
+df %>%
+  filter(!is.na(medal)) %>%
+  count(income, sort = TRUE) %>%
+  ggplot(aes(x = reorder(income, n), y = n)) +
+  geom_col(fill = "#0072B2") +
+  coord_flip() +
+  labs(title = "Total Medals by World Bank Income Category",
+       x = "Income Group", y = "Number of Medals") +
+  theme_minimal()
+```
+
+The results show a clear pattern: countries classified as high-income win significantly more Olympic medals than those in lower income categories. This disparity may be explained by several factors. In wealthier countries, people often have more time and freedom to pursue athletic careers, better access to balanced nutrition, and greater exposure to structured sports programs from a young age. These conditions create an environment that supports long-term athlete development and increases the likelihood of international success.
+
+---
+
+## Medals per Million Inhabitants
+
+```{r, echo=TRUE}
+df %>%
+  filter(!is.na(medal), population > 0) %>%
+  group_by(country) %>%
+  summarise(
+    total_medals = n(),
+    avg_population = mean(population, na.rm = TRUE),
+    medals_per_million = total_medals / (avg_population / 1e6),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(medals_per_million)) %>%
+  slice_head(n = 10) %>%
+  ggplot(aes(x = reorder(country, medals_per_million),
+             y = medals_per_million)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries: Medals per Million Inhabitants",
+    x = "Country", y = "Medals per Million"
+  ) +
+  theme_minimal()
+```
+
+To complement the GDP analysis, we also examine how countries perform relative to their population size by calculating medals per million inhabitants.
+
+With the exception of Jamaica (a well-known sprinting powerhouse) and possibly Hungary (which performs well despite a moderate GDP), the top countries in this ranking are predominantly economically strong and geographically advantaged: Liechtenstein, Scandinavian countries, Iceland, etc.
+
+These countries often have strong winter sports traditions, high investments in national sports programs, and well-developed systems for identifying and supporting talent early on.
+
+---
+
+## Correlation Analysis
+
+Before we look into causal evidence that medal count is determined by gdp, population and gdp per capita it is worthwhile to look into pairwise Correlations. The assumption ist hat medal count is correlated with all factors. Fort hat all pairwise correlations are calculated using Pearson Correlation.
+
+```{r, echo=TRUE}
+agg <- df %>%
+  group_by(country, year, gdp, gdp_per_cap, population) %>%
+  summarise(medal_count = sum(!is.na(medal)), .groups = "drop")
+
+cor_df <- agg %>% select(medal_count, population, gdp_per_cap, gdp)
+
+M <- cor(cor_df, use = "pairwise.complete.obs")
+
+corrplot(
+  M,
+  method = "ellipse",
+  addCoef.col = "black",
+  tl.col = "darkblue",
+  number.cex = 0.8,
+  diag = FALSE
+)
+```
+
+The Corr Plot shows that gdp seems to be highly correlated with the medal count. Surprisinlgy the population (0,25) and gdp per capita (0,17) share a low correlation with the medal count. Although no causal inference can be derived it seems that gdp might be a good predictor fort he medal count. The other pairwise correlations make sense since population and gdp per capita are expected to be positively correlated with gdp and population and gdp per capita is expected to be negatively correlated since more people means less gdp per capita.
+
+## Regression
+
+The aim of the analysis is to investigate whether the gross domestic product (GDP) and the population of a country can predict the number of medals won at the Olympic Games (medal_count).
+
+
+```{r, echo=TRUE}
+lm_pop = lm(medal_count ~ population + gdp, data = agg)
+lm_per_cap = lm(medal_count ~ gdp + gdp_per_cap, data = agg)
+
+models <- list(
+  "Model Population" = lm_pop,
+  "Model Per Capita" = lm_per_cap
+)
+
+modelsummary(models,
+             fmt = fmt_sprintf("%.5e"),
+             statistic = "p = {p.value}",
+             gof_omit = 'AIC|BIC|Log.Lik.|RMSE')
+
+```
+
+### Visualization Model Population
+
+```{r, echo=TRUE}
+plot2 = lm_pop %>% 
+  ggplot(
+    aes(x = gdp,
+        y = medal_count)) + 
+  geom_point() +
+  stat_smooth(method = "lm")
+
+plot1 = lm_pop %>% 
+  ggplot(
+    aes(x = population,
+        y = medal_count)) + 
+  geom_point() +
+  stat_smooth(method = "lm")
+
+plot1 / plot2
+```
+
+The linear regression model:
+
+medal_count = 4,763 + (1,327e-11 * GDP) + (2,604e-09 * Population)
+
+The intercept of 4.763 can be interpreted that a country with no GDP and no population can expect to win 4.763 medals on average. These are unrealistic assumptions for a country, hence the intercept is not interpretable in terms of content. With a P-value of < 2e-16, however, it is statistically significant.
+
+GDP has a coefficient of 1.327e-11. This means that a country has 1.327e-11 more medals per dollar more GDP ceteris paribus, which means that a country needs approx. 75.37 billion USD more GDP to expect 1 additional medal. The p-value is < 2e-16, i.e. highly significant. This indicates that GDP is a very strong predictor of medal success.
+
+The population has a coefficient of 2.604e-09. This means that you can expect 2.604e-09 more medals per person in the population. Converted, a country in the model would need about 384 million additional inhabitants to expect an additional medal - if GDP remains constant. But the p-value is 0.45, i.e. not significant. Population size has no demonstrable influence on the number of medals won if GDP is already taken into account.
+
+The R square provides a statement about the model quality. The 40 percent can be understood that 40 % of the variance in the number of medals is explained by GDP and population. While 40 percent is a lot it is obvious that a placetera of factors need to be taken into account in the model, such as sports promotion, infrastructure, culture, etc.
+
+
+### Visualization Model Per Capita
+
+While population seemed to be not a significant predictor fort he medalcount it is worthwhile to look if the population has an indirect causal inference through the GDP per capita.
+
+```{r, echo=TRUE}
+plot1 = lm_per_cap %>% 
+  ggplot(
+    aes(x = gdp_per_cap,
+        y = medal_count)) + 
+  geom_point() +
+  stat_smooth(method = "lm")
+
+plot2 = lm_per_cap %>% 
+  ggplot(
+    aes(x = gdp,
+        y = medal_count)) + 
+  geom_point() +
+  stat_smooth(method = "lm")
+
+
+plot1 / plot2
+```
+
+The linear regression model:
+
+medal_count = 4.016 + (1.316e-11* GDP) + (6.771e-05* GDP per Capita)
+
+The intercept of 4.016 is again while statistically significant not interpretable since no GDP and no GDP per capita is no realistic assumption.
+
+With 1.316e-11 more medals per dollar more GDP ceteris paribus a country needs approx. 75.99 billion USD more GDP to expect 1 additional medal. The p-value is < 2e-16, i.e. highly significant. This indicates that GDP is still a very strong predictor of medal success.
+
+The GDP per Capita seems to be statistically significant with a p-value of 0.00251. The coefficient of 6.771e-05 implies that for one Dollar GDP per Capita the medal count rises by 6.771e-05. It would need 14,770 USD GDP for an additional Medal.
+
+The R squard is with 40,32 explains only a little bit more from the variation in the model count then the population model. 
+
+---
+
+# Conclusion
+
+In summary, our analysis shows a clear association between a country’s Olympic success, measured by total medals won over the past 40 years up to 2016, and both its GDP and population size.
+
+One central explanation is that countries with high GDP and high average income levels generally offer their citizens more freedom and opportunity to pursue sports in their leisure time. In such societies, participation in sports, especially in cost-intensive disciplines at the amateur and semi-professional levels, is more accessible. Many sports require significant financial investment before professional support is available. For example, equestrian sports involve high costs for purchasing and maintaining horses. In several disciplines, even professional athletes struggle to earn sufficient income through prize money or sponsorship. As a result, access to these sports often depends on personal or family wealth. A higher average income therefore means that more people can afford to take part in such activities. This increases the overall participation base and raises the probability of developing elite athletes who can later compete at the Olympic level.
+
+In addition, economically strong countries typically provide superior infrastructure. Swimming pools, hockey arenas, riding halls, gymnastics centers, and specialized equipment must be widely accessible for participation and development to scale. Access to such facilities is a prerequisite for systematic talent identification and long-term training.
+
+However, infrastructure alone is not sufficient. Long-term Olympic success also relies on support structures such as youth development programs, qualified coaches, and funding provided by sports clubs or national associations. Cultural familiarity and continuity also play an important role. While difficult to measure directly, it is plausible that countries with a high GDP already 40 to 50 years ago have developed more established traditions and institutional knowledge in Olympic sports. This historical advantage may lead to better long-term performance. In contrast, countries that have only recently experienced economic growth may now have the resources to invest in sports, but still face challenges in building awareness, expertise, and broad participation in a wide range of disciplines. This suggests that not only current GDP but also long-term economic development may influence Olympic outcomes.
+
+Another important factor is nutrition. Access to healthy and balanced food is a fundamental requirement for athletic development. Countries with higher income levels are generally better positioned to provide their populations with sufficient and diverse nutrition. In contrast, food insecurity or limited dietary variety may negatively affect physical performance over time.
+
+Population size also plays a role. Countries with large populations naturally have more people engaging in sports. This increases the likelihood of producing Olympic-level athletes. For example, the probability of developing a gold medal winning athlete is structurally higher in China than in a small country like Liechtenstein.
+
+One additional factor that should be considered is access to sports itself, especially in the context of the Winter Olympic Games. Many countries, particularly in the Global South, do not have the climatic or geographic conditions necessary to develop winter sports. In some cases, even neighboring countries lack the facilities that would allow athletes to train in these disciplines. As a result, these nations are often unable to participate meaningfully in the Winter Olympics, regardless of their population or GDP. This raises the possibility that geographical location, rather than economic strength or population size alone, may be a decisive factor in Winter Games performance. Because many countries without winter sport infrastructure also have lower GDPs, the observed correlation with GDP might in part reflect limited geographic access rather than purely economic constraints.
+
+That said, GDP and population do not fully explain Olympic performance. Other factors such as national sports policy, political priorities, cultural emphasis on international competition, and investments in both grassroots and elite programs also contribute significantly to long-term success on the Olympic stage.
+
+## Error Analysis
+
+- Missing income group data (NA)
+
+- Some countries could not be assigned to an income group, which may have skewed the results in the income-based medal analysis.
+
+- Incomplete historical GDP and population data
+
+- For some countries or years, data was missing or inconsistent, requiring interpolation or aggregation in certain cases.
+
+- Uneven distribution of Olympic disciplines
+
+- Some countries focus on medal-heavy sports like swimming or athletics, which may distort overall medal counts.
+
+- Medal counts do not reflect individual effort
+
+- Team events are counted the same as individual events, although multiple athletes contribute. This may overrepresent countries with many team-based medals.
+
+- GDP does not equal sports investment
+
+- A high GDP does not automatically mean that a country prioritizes or invests in athletic development.
+
+- No consideration of geopolitical or historical factors
+
+- Events such as Olympic boycotts (e.g., 1980, 1984) or the absence of strong countries due to political reasons were not accounted for.
+
+
+
+
+## Outlook
+
+- Inclusion of additional variables
+
+- Future research could include variables like national sports budgets, education spending, or urbanization rates.
+
+- Time-series analysis
+
+- Examining the medal development of individual countries over time (e.g. China before and after 2000) could reveal dynamic trends.
+
+- Normalization by discipline
+
+- Analyzing medal counts per sport could highlight national specializations and reduce bias from multi-medal sports.
+
+- Deeper comparison of Summer vs. Winter Games
+
+- A more detailed separation of the two could better account for geographical advantages (e.g., climate and terrain for winter sports).
+
+- Non-linear models: Check whether non-linear correlations or interactions (e.g. between GDP and population) better explain the number of medals.
+
+
+
