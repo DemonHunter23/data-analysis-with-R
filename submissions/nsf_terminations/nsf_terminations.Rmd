@@ -1,0 +1,227 @@
+---
+title: "NSF Terminations under the Trump Administration"
+output: html_document
+date: "2025-06-25"
+authors: Julian Mühlberger, Mahmood Al-Nuaimi
+---
+
+  
+```{r setup, include=FALSE}
+  knitr::opts_chunk$set(results='hide',warning=FALSE,message=FALSE,error=FALSE,fig.keep="all")
+  ref_year = 2024
+```
+Die folgende Arbeit befasst sich mit den Budget-Kürzungen der Trump-Administration
+die im April des Jahres 2025 erfolgten. Die Analysen bauen auf den folgenden beiden Datensätzen auf:
+Zum einen wird der Datensatz "National Science Foundation Grant Terminations under the Trump Administration" aus dem Tidy-Tuesday-Github-Repository verwendet. Zum anderen bezieht sich die Analyse zur Referenz auf Daten aus der öffentlichen API der NSF aus dem Jahr `r ref_year`.  
+Wir stellen vorab drei Hypothesen auf, die anhand der vorliegenden Daten empirisch geprüft werden sollen.   
+1. Die Höhe der Kürzungen hängt signifikant vom jeweiligen Fachbereich ab.  
+2. Die Kürzungen hängen in signifikanter Weise von dem Bundesstaat ab, in dem das jeweilige Projekt finanziert wurde. Insbesondere stehen die sogenannten "Blue States" bei den Kürzungen im Vordergrund.  
+3. Die Kürzungen hängen in signifikanter Weise von der Formulierung der Projektzusammenfassungen und Projekttitel ab. Hierbei ist die Verwendung von Begriffen, die im Zusamenhang mit "Diversity, Equity, Inclusion" Initiativen stehen, ausschlaggebend.  
+```{r libraries,include = FALSE,echo=FALSE}
+library(lubridate)
+library(janitor)
+library(tidyverse)
+library(tidytuesdayR)
+library(tidytext)
+library(datasets)
+library(viridis)
+library(tm)
+library(qdapDictionaries)
+
+```   
+```{r datasets}
+
+
+load_nsf_api_csv <- function(nsf_api_csv_fname) 
+read_csv(nsf_api_csv_fname) %>%
+select(
+  grant_number=awd_id,
+  project_title=awd_titl_txt,
+  abstract = awd_abstract_narration,
+  org_name=inst_name,
+  org_state=inst_state_code,
+  org_city=inst_city_name,
+  org_zip=inst_zip_code,
+  org_district = st_cong_dist_code,
+  org_uei=org_uei_num,
+  usaspending_obligated=awd_amount,
+  award_type=awd_istr_txt,
+  directorate_abbrev=dir_abbr,
+  directorate=org_dir_long_name,
+  division = org_div_long_name,
+  nsf_startdate = awd_eff_date,
+  nsf_expected_end_date = awd_exp_date
+)
+#tuesdata <- tidytuesdayR::tt_load('2025-05-06')
+#nsf_terminations <- tuesdata$nsf_terminations
+nsf_terminations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-05-06/nsf_terminations.csv')
+nsf_data_2024 <- load_nsf_api_csv("total_grants_2024.csv")
+nsf_data_total <- nsf_data_2024
+nsf_data_total$terminated <- nsf_data_total$grant_number %in% nsf_terminations$grant_number
+```    
+# Hypothese 1
+## Verteilung der Kürzungen nach Fachbereich
+An den folgenden Grafiken lässt sich erkennen, dass die Verteilung der Kürzungen signifikant vom Fachbereich abhängt. Dies trifft sowohl auf die gekürzten Budgets, als auch auf die Anteile der Kürzungen am Gesamtbudget des jeweiligen Fachbereichs zu.
+Besonders stark waren die Bereiche "STEM Education", sowie die Sozial- und Wirtschaftswissenschaften betroffen. 
+Außerdem ist der Bereich "Technologies Innovation and Partnerships" auffällig, der sich mit Industriekooperationen befasst.
+Bemerkenswert ist zudem, dass die Kürzungen in absoluten Zahlen in dem Bereich "STEM Education" besonders hoch ausgefallen sind, jedoch relativ am Budget gemessen die Sozial- und Wirtschaftswissenschaften noch stärker benachteiligt wurden.
+```{r cuts_by_directorate}
+nsf_terminations %>% select(directorate,usaspending_obligated) %>% drop_na() %>% group_by(directorate)  %>% summarize(spending=sum(usaspending_obligated)) %>% ggplot() + coord_flip() + aes(x=directorate,y=spending) + geom_col(fill="orange")
+```    
+
+```{r funding_by_directorate}
+nsf_data_total %>% select(directorate,usaspending_obligated) %>% drop_na() %>% group_by(directorate) %>% summarize(spending=sum(usaspending_obligated)) %>% ggplot() + coord_flip() + aes(x=directorate,y=spending) + labs(x="Fachbereich",y=paste(paste("Budgets",ref_year) )) + geom_col(fill="orange")
+```    
+
+```{r percentage_by_directorate}
+nsf_data_total %>% 
+  select(terminated,directorate,usaspending_obligated) %>% 
+  drop_na() %>% 
+  group_by(directorate) %>% 
+  summarize(terminated_spending=sum(terminated*usaspending_obligated),spending=sum(usaspending_obligated)) %>% 
+  mutate(percent_terminated=terminated_spending/spending) %>% 
+  ggplot() +
+  coord_flip() + 
+  aes(x=directorate,y=percent_terminated)  + 
+  labs(x="Fachbereich",y=paste(paste("Eingestelltes Fördervolumens / Budget",ref_year) )) + 
+  geom_col(fill="orange")
+```    
+<br>
+
+# Hypothese 2
+## Kürzungen des Jährlichen Fördervolumen nach Bundestaaten
+
+
+Die folgende Grafik zeigt zunächst das gesamte gekürzte Budget. Wie man sehen kann ist das gekürtzte Fördervolumen in den Bundestaaten Californien und New-York besonders hoch. Jedoch gibt es auch andere Bundestaaten wie Texas in denen die Kürzungen des Budget ebenfalls hoch ausgefallen sind was der "Blue-State-Hypothese" wiederspricht.
+```{r us_states_map_total_terminations}
+us_states_map <- ggplot2::map_data("state")
+state_lookup <- data.frame(org_state=state.abb,region=tolower(state.name))
+budget_by_state <- nsf_terminations %>% 
+  select(state=org_state,budget=usaspending_obligated)%>% 
+  drop_na() %>% 
+  group_by(state) %>% 
+  summarize(budget=sum(budget) / 1e6)
+state_lookup <- data.frame(state=state.abb,region=tolower(state.name))
+budget_by_state <- budget_by_state %>% left_join(state_lookup, by="state")
+us_map_data <- budget_by_state %>% left_join(us_states_map,by="region")
+
+ggplot(us_map_data, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = budget), color = "black") +
+  scale_fill_viridis(option = "C", name = "Total Budget\n(Mio. $)",
+  na.value = "gray90", trans = "log") + 
+  coord_fixed(1.3)+
+  labs(title = "Gesamte Kürzungen nach US-Bundesstaat in Mio. USD") +
+ theme_minimal()
+```     
+<br>
+Um die Budgets der jeweiligen Bundesstaaten besser verordnen zu können, beziehen wir nun auch die Daten aus dem Jahr `r ref_year` mit ein und betrachten als nächstes das Gesamtbudget, das die NSF im Jahr `r ref_year` vergeben hat.
+```{r total_cuts_ref_year}
+total_budget_by_state <- nsf_data_total %>% 
+   select(state=org_state,budget=usaspending_obligated)%>% 
+   drop_na() %>% 
+   group_by(state) %>% 
+   summarize(budget=sum(budget) / 1e6)
+total_budget_by_state <- total_budget_by_state %>% left_join(state_lookup, by="state")
+us_map_data <- total_budget_by_state %>% left_join(us_states_map,by="region")
+
+ggplot(us_map_data, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = budget), color = "black") +
+  scale_fill_viridis(option = "C", name = "Total Budget\n(Mio. $)",
+  na.value = "gray90", trans = "log") + 
+  coord_fixed(1.3)+
+  labs(title = "Gesamte Kürzungen nach US-Bundesstaat in Mio. USD") +
+  theme_minimal()
+```    
+<br>
+Wie man sehen kann, gibt es eine große Überschneidung zwischen Staaten, in denen die Streichungen besonders hoch ausgefallen sind, und den Staaten mit einem hohen Budget. Daher betrachten wir als nächstes den Anteil des gestrichenen Budgets der Ausschreibungen aus dem Jahr `r ref_year`.
+```{r map_proportion_terminated_ref_year}
+
+total_budget_by_state <- nsf_data_total %>% 
+   select(terminated=terminated,state=org_state,budget=usaspending_obligated)%>% 
+   drop_na() %>% 
+   group_by(state) %>% 
+   summarize(budget=sum(budget) / 1e6,
+   terminated_budget = sum(budget * terminated) / 1e6)
+total_budget_by_state$percent_terminated <- total_budget_by_state$terminated_budget / total_budget_by_state$budget
+total_budget_by_state <- total_budget_by_state %>% left_join(state_lookup, by="state")
+us_map_data <- total_budget_by_state %>% left_join(us_states_map,by="region")
+
+ggplot(us_map_data, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = percent_terminated), color = "black") +
+  scale_fill_viridis(option = "C", name = "Total Budget\n(Mio. $)",
+  na.value = "gray90", trans = "log") + 
+  coord_fixed(1.3)+
+  labs(title = "Gesamte Kürzungen nach US-Bundesstaat in Mio. USD") +
+  theme_minimal()
+```    
+<br>
+In den folgenden beiden Graphen lässt sich erkennen, dass ein maßgeblicher Faktor für die Kürzungen sowohl prozentual als auch in absoluten Zahlen das Gesamtbudget des Bundesstaats zu sein scheint. Dies suggeriert, dass die politische Ausrichtung der Bundesstaaten bei den letzten Präsidentschaftswahlen wahrscheinlich nicht der ausschlaggebende Faktor war.
+
+```{r top_states_by_percentage_of_budget_cut}
+budget_by_state_ref_year <- total_budget_by_state %>% 
+  select(state=region,budget=budget,terminated_budget=terminated_budget,percent_terminated=percent_terminated)
+top_10_by_percent <- budget_by_state_ref_year %>% arrange(-percent_terminated) %>% slice_head(n=10)
+top_10_by_percent %>% ggplot() + aes(x=reorder(state,percent_terminated),y=percent_terminated)+ coord_flip()+labs(x="State",y=paste("Prozentualer Anteil des Gekürtzten Budgets von ",ref_year)) + geom_col()
+top_10_by_budget <- budget_by_state_ref_year %>% arrange(-budget) %>% slice_head(n=10)
+top_10_by_budget %>% ggplot() + aes(x=reorder(state,budget),y=budget) +coord_flip()+ labs(x="State",y=paste("Gesamtes Budget",ref_year)) + geom_col()
+```    
+
+
+# Hypothese 3
+## Sprachliche Analyse der Projektbeschreibungen
+Zunächst betrachten wir die am häufigsten vorkommenden Wörter in den terminierten Fördervergaben.
+```{r word_counts_plot}
+  word_counts <- nsf_terminations %>%
+     select(abstract) %>%
+     unnest_tokens(word, abstract) %>%      # Text in Wörter aufteilen
+     anti_join(stop_words, by = "word")%>%
+      count(word,sort=TRUE)# Stoppwörter entfernen (wie „the“,
+  word_counts %>%
+     top_n(20, n) %>%
+     mutate(word = reorder(word, n)) %>%
+     ggplot(aes(word, n)) +
+     geom_col(fill = "#6699CC") +
+     coord_flip() +
+     labs(title = "20 häufigste Wörter in Abstracts der beendeten Grants",
+          x = "Wort",
+          y = "Anzahl Vorkommen") +
+     theme_minimal()
+```    
+
+Die in den Beschreibungen der terminierten Projekte am häufigsten verwendeten Begriffe scheinen nicht im Zusammenhang mit "D.E.I." Initiativen zu stehen. Einen genaueren Einblick erhält man jedoch beim Hinzunehmen der gesamten Daten aus dem Jahr `r ref_year`. Im Folgenden werden daher Korrelationen zwischen den verwendeten Wörtern und den Kürzungen genauer untersucht. Dabei wurden Wörter, die in der wissenschaftlichen Literatur häufig vorkommen, ausgeschlossen. Die Grafik zeigt die Wörter, die mit der Beendigung der Projekte stark korreliert sind. Wie man sieht, ist bei dieser Analyse ein Zusammenhang der Kürzungen mit "Diversity Equity Inclusion" Initiativen stärker erkennbar.
+```{r word_termination_correltation}
+terminated_rows <- nsf_data_total %>% filter(terminated)
+non_terminated_rows <- nsf_data_total %>% filter(!terminated)
+
+#For computational reasons we have to restrict the ammount of data so we use all of the terminated and rows and m* the number of rows from the non-terminated projects. 
+#m has to be adjusted based on the amount of available RAM Larger values of m should lead to more accurate results.
+m=10
+#Note that the choice of max_df will have to 
+#be adjusted based on m as the document frequency is not 
+#normalized relative to the number of non-terminated projects included
+max_df=300
+train_rows <- rbind(terminated_rows, slice_head(non_terminated_rows,n=m*nrow(terminated_rows)))
+
+corpus <- Corpus(VectorSource(paste(train_rows$project_title,"\n",train_rows$abstract)))
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers) 
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, stripWhitespace)
+dtm <- as.matrix(DocumentTermMatrix(corpus))
+words <- colnames(dtm)
+rownames(dtm) <- NULL
+data(GradyAugmented) #Loads a dictionary so we can filter for real words
+document_frequency <- colSums(dtm)
+terminated_words <- 
+  tibble(words=words,df=document_frequency,cor=cor(dtm,train_rows$terminated))%>% 
+  filter(words %in% GradyAugmented) %>% filter(df <= max_df) %>% arrange(-cor)
+terminated_words %>% slice_head(n=20) %>% 
+  ggplot() + aes(x=reorder(words,cor),y=cor) + labs(title = paste("Top 20 Wörter nach Korrellationskoeffizient ",ref_year),
+          x = "Wort",
+          y = "Korrelation") +coord_flip() + geom_col(fill="#6699CC")
+```    
+
+# Zusammenfassung
+Zusammenfassend lässt sich sagen, dass unsere Analyse die Hypothesen 1. und 3. unterstützt. 
+Zudem stellten wir aufgrund der Kürzungen in Bundesststaaten wie Texas, sowie aufgrund der starken Abhängigkeit der Kürzungen vom Gesamtbudget des jeweiligen Staates, die Hypothese 2. in Frage. Eine genauere Analyse unter Einbezug zusätzlicher Daten wäre jedoch angebracht, um mögliche Zusammenhänge mit dem Wählerverhalten und der politischen Führung der Bundesstaaten genauer zu untersuchen.
