@@ -1,0 +1,674 @@
+---
+title: "Olympic and Paralympic Datensets"
+output:
+  html_document:
+    toc: true #adds table of contents
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+
+date: "`r Sys.Date()`"
+---
+**Hypothese**
+*Länder, die in den olympischen Spielen gut abschneiden, schneiden auch bei den paralympischen Spielen gut ab.*
+Es wurden nur Länder verglichen, die sowohl bei den Paralympischen als auch Olympischen Spielen mitgemacht haben.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(pander)
+library(readr)
+library(tidyr)
+library(broom)
+library(ggalt)  
+library(tibble)
+library(scales)
+library(stringr)
+library(patchwork)
+```
+
+```{r reading data}
+#here data is read in 
+
+library(tidytuesdayR)
+
+
+paralympics <- read_csv("data/athletes.csv")
+olympics    <- read_csv("data/olympics.csv")
+
+#rename and select data from olympic datafile
+olym2 <- olympics %>%
+  rename(
+    name    = name,
+    gender  = sex,
+    country = noc,
+    sport   = sport 
+  ) %>%
+  mutate(
+    gender = recode(gender,
+                    M = "male",
+                    F = "female"),
+  country = ifelse(country == "URS", "RUS", country), #becuase the dataset contains URS and RUS we have decided to combine both and label it as RUS
+  country = ifelse(country %in% c("GER", "GDR", "FRG"), "GER", country) #this dataset doesn't distinguish between GER, GDR, FRG but adding this line helps for the comparison of the datasets
+  ) %>%
+  filter(!is.na(medal)) %>%
+  select(name, gender, country, year, medal, sport) 
+ 
+# rename and select data from paralympic datafile
+para2 <- paralympics %>%
+  rename(
+    name    = athlete,
+    gender  = gender, 
+    country = abb,
+    sport   = type,
+    origin = country,
+  ) %>%
+  mutate(
+    gender = recode(gender,
+                    Men   = "male",
+                    Women = "female"),
+  country = ifelse(country %in% c("GER", "GDR", "FRG"), "GER", country), #combined all german datasets
+  country = ifelse(country == "URS", "RUS", country)#this dataset doesn't distinguish between USR and RUS but adding this line helps for the comparison of the datasets
+  ) %>%
+  filter(!is.na(medal)) %>%
+  select(name, gender, country, year, medal, sport)
+ 
+
+# 3. join into one dataset
+all_games <- bind_rows(
+  olym2 %>% mutate(origin = "Olympic"),
+  para2 %>% mutate(origin = "Paralympic")
+)
+
+```
+
+# Olympic Datensatz
+
+
+Hier haben wir uns den Olympic Datensatz angeschaut und die Top 10 Länder mit den meisten Medaillen identifiziert. Hier war zu beachten, dass der Datensatz olympics.csv sowohl Daten für Russland (RUS) als auch UDSSR (USR) enthält. Hier wurden RUS und USR in einen Datensatz für Russland kombiniert. Es sind Daten von 1896 bis 2016 enthalten
+
+
+```{r top olympic countries}
+library(pander)
+
+olym2 %>% 
+ group_by(country) %>%
+  summarise(
+    gold   = sum(medal == "Gold"),
+    silver = sum(medal == "Silver"),
+    bronze = sum(medal == "Bronze"),
+    total  = n(),
+    .groups = "drop"
+  ) %>%
+  
+  # 3. take the top 10 by total
+  arrange(desc(total)) %>%
+  slice_head(n = 10) %>%
+  
+  # 4. pretty‐print as a markdown table
+  pander()
+```
+
+
+In diesem Abschnitt sieht man einen Graphen mit den Top 10 Ländern mit den meisten Medaillen. Außerdem wird dargestellt, wie viele Gold-, Silber- und Bronze-Medaillen jedes Land jeweils gewonnen hat. 
+
+```{r top olympic countries plot}
+# 1. build a top10 summary from olym2 by total medals
+top10olymp <- olym2 %>%
+  count(country, name = "total") %>%
+  arrange(desc(total)) %>%
+  slice_head(n = 10) %>%
+  pull(country)
+
+#order of countries (decending based on total)
+countryorder <- olym2 %>%
+  filter(country %in% top10olymp) %>%
+  count(country, name = "total") %>%
+  arrange(desc(total)) %>%
+  pull(country)
+
+countryorder <- rev(countryorder) #added this so the top countries are on the top of the graph 
+
+#2. add a medal breakdown for stacked column chart 
+top10olympstacked <- olym2 %>%
+  filter(country %in% top10olymp) %>%
+  count(country, medal, name = "count") %>%
+  mutate(
+    medal = factor(medal, levels = c("Gold", "Silver", "Bronze")),
+    country = factor(country, levels = countryorder)
+  )
+
+# 23. plot it
+ggplot(top10olympstacked, aes(x = country, y = count, fill = medal)) +
+  geom_col() +
+  coord_flip() +
+    scale_fill_manual(values = c("Gold" = "goldenrod", "Silver" = "azure3", "Bronze" = "darkorange3")) +
+  labs(
+    title = "Top 10 Olympic Medal-Winning Countries",
+    subtitle = "Stacked by Medal Type",
+    x     = "Country (NOC)",
+    y     = "Total of Medals",
+    fill = "Medal"
+  )
+
+```
+
+
+Um darzustellen, welchen Anteil jedes Land von allen Medaillen in den olympischen Spielen über die Zeit gewonnen hat, haben wir hier einen Pie Chart zur Veranschaulichung erstellt.
+
+```{r olympics percentage graph}
+
+
+piechart_df <- olym2 %>%
+  count(country, name = "count") %>%
+  mutate(country = if_else(country %in% top10olymp, country, "Other")) %>%
+  group_by(country) %>%
+  summarise(count = sum(count), .groups = "drop") %>%
+  mutate(
+    share   = count / sum(count),
+    label   = percent(share, accuracy = 0.1),
+    country = factor(country, levels = c(top10olymp, "Other"))
+  ) %>%
+  arrange(country)
+
+radius_factor <- 1.3 #factor to move percentage labels further from center to make them easier to read
+
+# pie chart
+ggplot(piechart_df, aes(x = 1, y = share, fill = country)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(x = radius_factor, label = label),
+            position = position_stack(vjust = 0.5),  # centers on each slice
+            size = 3, color = "black") +
+  labs(
+    title = "Share of Olympic Medals by Country",
+    fill = "Country"
+  ) +
+  theme_void()  #gets rid of axis and grid
+
+```
+
+# Paralympic Datensatz
+
+
+Hier haben wir uns den Paralympics Datensatz angeschaut und die Top 10 Länder identifiziert, die die größte Gesamtanzahl an Medaillen gewonnen haben. Hier ist zu beachten, dass die Daten für Westdeutschland (FRG) und Ostdeutschland (GDR) mit den anderen Daten für ganz Deutschland (GER) kombiniert wurden, um einen zusammengefügten Datensatz für Deutschland zu erstellen.
+
+```` {r top paralympic countries}
+library(pander)
+
+para2 %>% 
+ group_by(country) %>%
+  summarise(
+    gold   = sum(medal == "Gold"),
+    silver = sum(medal == "Silver"),
+    bronze = sum(medal == "Bronze"),
+    total  = n(),
+    .groups = "drop"
+  ) %>%
+  
+  # 3. take the top 10 by total
+  arrange(desc(total)) %>%
+  slice_head(n = 10) %>%
+  
+  # 4. pretty‐print as a markdown table
+  pander()
+
+
+
+
+````
+
+Hier sieht man einen Graph, der die Top 10 Länder zeigt, die die meisten Medaillen bei den Paralympics gewonnen haben. Außerdem wird dargestellt, wie viele Gold-, Silber- und Bronzemedaillen die einzelnen Länder jeweils gewonnen haben.
+ 
+````{r top paralympic countries plot}
+
+top10para <- para2 %>%
+  count(country, name = "total") %>%
+  arrange(desc(total)) %>%
+  slice_head(n = 10) %>%
+  pull(country)
+
+#order of countries (decending based on total)
+countryorderp <- para2 %>%
+  filter(country %in% top10para) %>%
+  count(country, name = "total") %>%
+  arrange(desc(total)) %>%
+  pull(country)
+
+countryorderp <- rev(countryorderp) #added this so the top countries are on the top of the graph like before 
+
+#2. add a medal breakdown for stacked column chart 
+top10parastacked <- para2 %>%
+  filter(country %in% top10para) %>%
+  count(country, medal, name = "count") %>%
+  mutate(
+    medal = factor(medal, levels = c("Gold", "Silver", "Bronze")),
+    country = factor(country, levels = countryorderp)
+  )
+
+# 23. plot it
+ggplot(top10parastacked, aes(x = country, y = count, fill = medal)) +
+  geom_col() +
+  coord_flip() +
+    scale_fill_manual(values = c("Gold" = "goldenrod", "Silver" = "azure3", "Bronze" = "darkorange3")) +
+  labs(
+    title = "Top 10 Paralympic Medal-Winning Countries",
+    subtitle = "Stacked by Medal Type",
+    x     = "Country (NOC)",
+    y     = "Total of Medals",
+    fill = "Medal"
+  )
+
+
+
+
+````
+
+
+Zur Veranschaulichung haben wir hier noch einmal einen Kreisdiagramm erstellt, das den Anteil jedes Landes an allen Medaillen bei den Paralympischen Spielen über die Zeit darstellt.
+ 
+
+```{r paralympics percentage graph}
+
+piechartp_df <- para2 %>%
+  count(country, name = "count") %>%
+  mutate(country = if_else(country %in% top10para, country, "Other")) %>%
+  group_by(country) %>%
+  summarise(count = sum(count), .groups = "drop") %>%
+  mutate(
+    share   = count / sum(count),
+    label   = percent(share, accuracy = 0.1),
+    country = factor(country, levels = c(top10para, "Other"))
+  ) %>%
+  arrange(country)
+
+radius_factor <- 1.3 #factor to move percentage labels further from center to make them easier to read
+
+# pie chart
+ggplot(piechartp_df, aes(x = 1, y = share, fill = country)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(x = radius_factor, label = label),
+            position = position_stack(vjust = 0.5),  # centers on each slice
+            size = 3, color = "black") +
+  labs(
+    title = "Share of Paralympic Medals by Country",
+    fill = "Country"
+  ) +
+  theme_void()  #gets rid of axis and grid
+
+```
+
+# Paralympische vs Olympische Spiele
+
+## Datensatzvergleich
+
+Im nächsten Schritt sollen die Datensätze der Olympischen und Paralympischen Spiele miteinander verglichen werden. Um einen aussagekräftigen Vergleich durchführen zu können, müssen wir zunächst die Länder ermitteln, für die Daten sowohl für die Olympischen als auch für die Paralympischen Spiele vorliegen.
+
+
+```{r compare datasets}
+
+
+# 1. get unique country lists from each Games
+oly_countries  <- olym2  %>% distinct(country) %>% pull()
+para_countries <- para2  %>% distinct(country) %>% pull()
+
+# 2. compute the “only” sets
+oly_only  <- setdiff(oly_countries, para_countries)
+para_only <- setdiff(para_countries, oly_countries)
+
+# 3. print them
+cat("Countries with Olympic but NO Paralympic data:\n",
+    paste(oly_only, collapse = ", "), "\n\n")
+cat("Countries with Paralympic but NO Olympic data:\n",
+    paste(para_only, collapse = ", "), "\n\n")
+
+# 4. filter to only those with both
+common_countries <- intersect(oly_countries, para_countries)
+all_games_common <- all_games %>%
+  filter(country %in% common_countries)
+```
+
+Mit dieser Liste können wir einen neuen Datensatz erstellen, der nur Länder enthält, für die Daten für beide Events vorliegen.
+
+## Side-by-Side Balkendiagramm 
+
+
+Um die Olympischen und die Paralympischen Spiele zu vergleichen, betrachten wir, wie viele Medaillen jedes Land prozentual zur Gesamtzahl der bei den jeweiligen Spielen vergebenen Medaillen gewonnen hat. Wir verwenden einen prozentualen Vergleich, da die Olympischen Spiele und die Paralympics unterschiedliche Teilnahmequoten haben, seit unterschiedlicher Zeit bestehen (die Olympischen Spiele gibt es schon länger) und unterschiedliche Disziplinen haben.
+
+
+```{r top 10 side by side bar chart} 
+# finding the top country list for comparison between olympics and paralympics
+top10_both <- all_games_common %>%
+  count(country, origin, name = "n") %>%
+  group_by(country) %>% summarise(overall = sum(n), .groups = "drop") %>%
+  slice_max(overall, n = 10) %>%
+  pull(country)
+
+# find total medals per game
+totals_per_game <- all_games_common %>%
+  count(origin, name = "N_total")
+
+share_df <- all_games_common %>%
+  filter(country %in% top10_both) %>%
+  count(country, origin, name = "n") %>%
+  left_join(totals_per_game, by = "origin") %>%
+  mutate(share = n / N_total) %>%                 # % of all medals in that Games
+  group_by(country) %>% mutate(overall = sum(n)) %>% ungroup() %>%
+  mutate(country = reorder(country, overall))     
+
+#plot: side-by-side % bars
+ggplot(share_df, aes(x = country, y = share, fill = origin)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Top 10 Countries: Share of Medals (Olympics vs Paralympics)",
+    x = "Country",
+    y = "Share of all medals in that Games (percentage)",
+    fill = ""
+  ) +
+  theme_minimal()
+
+```
+
+
+Aus diesem Column Chart kann entnommen werden, dass Länder wie die USA, Deutschland, Großbritannien, Frankreich, Australien und Kanada die Top 10 Länder sowohl bei den paralympischen als auch bei den olympischen Spielen sind. Das spricht dafür, dass Länder, die gut in den Olympischen Spielen abschneiden, auch gut bei den Paralympischen Spielen abschneiden. Allerdings sieht man auch, dass Länder wie Russland und Italien deutlich besser in den Olympischen Spielen und umso schlechter in den Paralympischen Spielen abschneiden. In China wird das Gegenteil ersichtlich. Um herauszufinden, ob der Erfolg in den Olympischen Spielen im Zusammenhang steht mit dem in den Paralympischen Spielen bzw. ob hier eine Korrelation zu erkennen ist, haben wir noch einen Scatter- und Regression-Plot erstellt.
+
+
+## Regressionsdiagramme und Korrelations-Tests
+
+Hier sieht man nun den Scatterplott und eine Pearson Korrelation. 
+
+
+```{r regression and pearson test}
+
+country_perc <- all_games_common %>%
+  count(country, origin, name = "n") %>%
+  left_join(totals_per_game, by = "origin") %>%
+  mutate(share = n / N_total) %>%
+  select(country, origin, share) %>%
+  pivot_wider(
+    names_from  = origin,
+    values_from = share,
+    values_fill = list(share = 0)
+  ) %>%
+  rename(
+    olyperc  = Olympic,
+    paraperc = Paralympic
+  )
+
+# 3) Scatter (percent vs percent)
+ggplot(country_perc, aes(x = olyperc, y = paraperc)) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", se = TRUE) +
+  scale_x_continuous(labels = percent_format()) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Paralympic vs Olympic Medal Share by Country\n(only countries in both)",
+    x     = "Olympic share of all Olympic medals",
+    y     = "Paralympic share of all Paralympic medals"
+  ) +
+  theme_minimal()
+
+# 4) Pearson correlation on shares
+cor_test <- cor.test(
+  country_perc$olyperc,
+  country_perc$paraperc,
+  method = "pearson"
+)
+#estimate = r (pearson correlation coefficient, 1 = perfect linear relationship, 0 = no relationship), statistic = t statisitic,  p value < 0.05 = statistically significant, parameter = degrees of freedom, alternative two.sided just means we tested for positive and negative correlations
+
+# 5) Tidy + print
+cor_res <- tidy(cor_test)
+pander(cor_res)
+
+```
+
+Von unserem Streudiagramm geht hervor, dass eine starke lineare Korrelation zwischen Ländern besteht, die bei den Olympischen Spielen gut abschneiden, und Ländern, die bei den Paralympics gut abschneiden. Aus dem Pearson-Korrelationstest geht hervor, dass der Pearson-Korrelationskoeffizient r (hier als Schätzung bezeichnet) 0,814 beträgt, was nahe bei 1 liegt und auf eine starke lineare Beziehung hindeutet. Darüber hinaus liegt der p-Wert unter 0,05, was darauf hindeutet, dass die Korrelation statistisch signifikant ist. Um die Korrelation weiter zu untersuchen, haben wir auch ein Rangkorrelationsdiagramm erstellt und einen Spearman-Rangkorrelationstest durchgeführt. Hier werden die Länder in eine Rangfolge gebracht und dann verglichen.
+
+
+```{r rank correlation plot}
+
+country_ranks <- country_perc %>%
+  mutate(
+    olyrank  = dense_rank(desc(olyperc)),
+    pararank = dense_rank(desc(paraperc))
+  )
+
+
+max_rank <- max(country_ranks$olyrank, country_ranks$pararank, na.rm = TRUE)
+
+
+tick_by <- if (max_rank > 30) 5 else 1 #makes it so not every tick is shown on the axis
+rank_breaks <- seq(1, max_rank, by = tick_by)
+
+ggplot(country_ranks, aes(x = olyrank, y = pararank, label = country)) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_text(vjust = -0.5, size = 2.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  scale_x_reverse(limits = c(max_rank, 1), breaks = rank_breaks) +
+  scale_y_reverse(limits = c(max_rank, 1), breaks = rank_breaks) +
+  labs(
+    title = "Rank Correlation: Olympic vs Paralympic Medal Share",
+    x = "Olympic Rank (1 = Highest Share)",
+    y = "Paralympic Rank (1 = Highest Share)"
+  ) +
+  theme_minimal()
+
+
+# Spearman rank correlation test
+spearman_test <- cor.test(
+  country_ranks$olyrank,
+  country_ranks$pararank,
+  method = "spearman"
+)
+#estimate = rho (1 = strong correlation, 0 = no correlation), stastic value is used to calculate b value, p value < 0.05 = statistically significant, alternative two.sided just means we tested for positive and negative correlations
+
+pander(tidy(spearman_test))
+
+```
+
+Aus dem obigen Diagramm und dem Korrelationstest geht erneut hervor, dass eine starke Korrelation zwischen Ländern besteht, die bei den Olympischen Spielen gut abschneiden, und Ländern, die bei den Paralypischen Spielen gut abschneiden. Hier hat der Korrelationskoeffizient Rho einen Wert von 0,7429, der wiederum nahe bei 1 liegt, was darauf hindeutet, dass eine Korrelation vorliegt. Auch hier ist der p-Wert sehr klein und liegt unter 0,05. 
+
+Eine weitere Frage, die wir untersuchen möchten, ist, wie das Geschlecht die Korrelation zwischen Olympischen Spielen und Paralympischen Spielen beeinflusst. 
+
+Eine **Hypothese** lautet, dass *unabhängig vom Geschlecht ähnliche Korrelationen zu beobachten sind*. Allerdings könnte aufgrund der potenziell unzureichenden Finanzierung von Frauensport und medizinischer Forschung, die für die Forschung zu Frauen mit körperlichen Behinderungen eine Rolle spielt, eine schwächere Korrelation zwischen olympischen und paralympischen Erfolgen bestehen. 
+
+
+## Korrelation basierend auf dem Geschlecht
+
+### Streudiagramm und Pearson test
+
+```{r gender comparison pearson}
+
+df_games <- all_games_common %>% 
+  filter(gender %in% c("female", "male"))
+
+
+totals_per_game_gender <- df_games %>%
+  count(origin, gender, name = "N_total")
+
+
+country_perc_gender <- df_games %>%
+  count(country, origin, gender, name = "n") %>%
+  left_join(totals_per_game_gender, by = c("origin","gender")) %>%
+  mutate(share = n / N_total) %>%
+  select(country, gender, origin, share) %>%
+  pivot_wider(
+    names_from  = origin,
+    values_from = share,
+    values_fill = list(share = 0)
+  ) %>%
+  rename(
+    olyperc  = Olympic,
+    paraperc = Paralympic
+  )
+
+ggplot(country_perc_gender, aes(x = olyperc, y = paraperc)) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", se = TRUE) +
+  scale_x_continuous(labels = percent_format()) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Paralympic vs Olympic Medal Share by Country",
+    subtitle = "Plotted seperately for female and male participants",
+    x = "Olympic share of all Olympic medals",
+    y = "Paralympic share of all Paralympic medals"
+  ) +
+  theme_minimal() +
+  facet_wrap(~ gender, ncol = 2)
+
+# 5) Pearson correlations per gender (tidy table)
+cors_by_gender <- country_perc_gender %>%
+  group_by(gender) %>%
+  summarise(tidy(cor.test(olyperc, paraperc, method = "pearson")), .groups = "drop")
+
+pander(cors_by_gender)
+```
+
+### Rank Correlation Plot and Spearman test
+
+```{r geneder comparison rank correlation}
+country_ranks_gender <- country_perc_gender %>%
+  group_by(gender) %>%
+  mutate(
+    olyrank  = dense_rank(desc(olyperc)),
+    pararank = dense_rank(desc(paraperc))
+  ) %>%
+  ungroup()
+
+p_female <- country_ranks_gender %>%
+  filter(gender == "female") %>%
+  ggplot(aes(x = olyrank, y = pararank, label = country)) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_text(vjust = -0.5, size = 2.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  scale_x_reverse(limits = c(61, 1)) +
+  scale_y_reverse(limits = c(56, 1)) +
+  labs(title = "female", x = "Olympic Rank (1 = Highest Share)",
+       y = "Paralympic Rank (1 = Highest Share)") +
+  theme_minimal()
+
+# cant use one max for both male and female cause it looks to messy
+max_x_male <- max(country_ranks_gender$olyrank[country_ranks_gender$gender=="male"], na.rm = TRUE)
+
+p_male <- country_ranks_gender %>%
+  filter(gender == "male") %>%
+  ggplot(aes(x = olyrank, y = pararank, label = country)) +
+  geom_point(color = "steelblue", size = 2) +
+  geom_text(vjust = -0.5, size = 2.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linetype = "dashed") +
+  scale_x_reverse(limits = c(max_x_male, 1)) +
+  scale_y_reverse(limits = c(66, 1)) +
+  labs(title = "male", x = "Olympic Rank (1 = Highest Share)",
+       y = "Paralympic Rank (1 = Highest Share)") +
+  theme_minimal()
+
+p_female + p_male + plot_annotation(title = "Plotted separately for female and male participants")
+
+# Spearman correlation by gender 
+spearman_by_gender <- country_ranks_gender %>%
+  group_by(gender) %>%
+  summarise(tidy(cor.test(olyrank, pararank, method = "spearman")), .groups = "drop")
+
+pander(spearman_by_gender)
+```
+
+Anhand der obigen Korrelationsdiagramme und der Werte im Korrelationstest lässt sich erkennen, dass tatsächlich eine etwas stärkere Korrelation zwischen olympischem Erfolg und paralympischem Erfolg in der Frauengruppe besteht, was die frühere Hypothese widerlegen würde.
+
+## Korrelation basierend auf Sport
+
+Um die Leistungen der Länder bei den Paralympics und Olympischen Spielen in einer bestimmten Sportart vergleichen zu können, müssen wir zunächst ermitteln, welche Sportarten bei beiden Spielen vertreten sind: 
+
+```{r comparison by sport}
+#matching the sports
+same_name_sport <- function(x) {
+  x <- str_to_lower(str_trim(x))
+  x <- str_replace_all(x, "[–—-]", "-")       
+  x <- str_replace_all(x, "\\s+", " ")        
+  x <- str_remove(x, "^para\\s*-\\s*")        
+  x <- str_remove(x, "^wheelchair\\s+")       
+  x <- str_remove(x, "\\s*\\(.*\\)$")       
+  
+  case_when(
+    str_detect(x, "athletics|track\\s*&\\s*field") ~ "athletics",
+    str_detect(x, "^cycling|bmx|mountain bike|track cycling|road cycling") ~ "cycling",
+    str_detect(x, "canoe slalom|canoe sprint|canoeing|paracanoe|canoe\\b") ~ "canoe",
+    str_detect(x, "equestrianism|equestrian") ~ "equestrian",
+    TRUE ~ x
+  )
+}
+
+
+olym2_norm <- olym2 %>% mutate(snsport = same_name_sport(sport))
+para2_norm <- para2 %>% mutate(snsport = same_name_sport(sport))
+
+# Compute sets on normalized names
+oly_sports  <- olym2_norm %>% distinct(snsport) %>% pull()
+para_sports <- para2_norm %>% distinct(snsport) %>% pull()
+
+oly_sport_only  <- setdiff(oly_sports,  para_sports)
+para_sport_only <- setdiff(para_sports, oly_sports)
+common_sports   <- intersect(oly_sports, para_sports)
+
+cat("Sportarten bei den Olympischen aber NICHT bei den Paralympischen Spielen:\n",
+    if (length(oly_sport_only)) paste(sort(oly_sport_only), collapse = ", ") else "(none)", "\n\n")
+cat("Sportarten bei den Paralympischen Spielen enthalten aber NICHT bei den Olympischen:\n",
+    if (length(para_sport_only)) paste(sort(para_sport_only), collapse = ", ") else "(none)", "\n\n")
+cat("Sportarten präsent bei den Olympischen und Paralympischen Spielen:\n",
+    if (length(common_sports)) paste(sort(common_sports), collapse = ", ") else "(none)", "\n\n")
+
+all_games_common_sports <- all_games %>%
+  mutate(snsport_std = same_name_sport(sport)) %>%
+  filter(snsport_std %in% common_sports)
+
+```
+
+Um festzustellen, ob es einen Zusammenhang zwischen den Paralympischen und den Olympischen Spielen in einer bestimmten Sportart gibt, haben wir für jede Sportart den Pearson-Korrelationskoeffizienten berechnet.
+
+```{r correlation plots by sport event}
+
+cors_by_sport <- all_games_common_sports %>%
+  count(snsport_std, country, origin, name = "n") %>%
+  group_by(snsport_std, origin) %>%
+  mutate(N_total = sum(n)) %>%
+  ungroup() %>%
+  mutate(share = n / N_total) %>%
+  select(snsport_std, country, origin, share) %>%
+  pivot_wider(names_from = origin, values_from = share, values_fill = 0) %>%
+  rename(olyperc = Olympic, paraperc = Paralympic) %>%
+  group_by(snsport_std) %>%
+  filter(
+    n() >= 3,                      
+    sd(olyperc) > 0,              
+    sd(paraperc) > 0
+  ) %>%
+  summarise(
+    n_countries = n(),
+    broom::tidy(cor.test(olyperc, paraperc, method = "pearson")),
+    .groups = "drop"
+  ) %>%
+  # nicer column names
+  rename(
+    sport = snsport_std,
+    r      = estimate,
+    t      = statistic,
+    df     = parameter,
+    p      = p.value
+  ) %>%
+  arrange(desc(r))
+
+pander(cors_by_sport)
+
+```
+
+Aus diesen Korrelationskoeffizienten lässt sich erkennen, dass es eine starke Korrelation in der Leichtathletik und eine moderate Korrelation im Fechten, Schwimmen, Bogenschießen und Tischtennis gibt. Die anderen Sportarten weisen eine sehr schwache oder gar keine Korrelation auf.
+
