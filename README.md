@@ -21,20 +21,22 @@ By the end of the course participants should be:
 # Course Schedule
 
 
-### Day 1: [23-05]
+### Day 1: [07-11]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Friday** | **12:00 - 13:00** | **[Onboarding & Getting Started with R](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/063f66ae8404c824f758931d869c41b235c5e4ca/slides/1_1_Getting_Started.html)** |
-| *Friday* | *13:00 - 13:15*  | *Break*                             |
-| **Friday** | **13:15 - 14:00** | **[Data Types & Loading](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/5ec611973042ca8fb8f34b6bcbdb6380ef418b87/slides/1_2_Data_Types_Import_Export.html)**            |
-|*Friday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Friday** | **15:00 - 16:00** | **[Data Wrangling](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/f9908928273be3bd8c1476f2bf6b14e38e68d009/slides/2_1_Data_Wrangling_Part1.html)**      |
-| *Friday* | *16:00 - 16:15*  | *Break*                             |
-| **Friday** | **16:15 - 17:00**  | **[Data Workflows & Github](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/bcdab2ffec6ab6f5810aaa6b309604f1ab52b11a/slides/1_3_Appendix_Setup_Workflow_Help.html)**     |
+| **Friday** | **09:00 - 10:00** | **[Onboarding & Getting Started with R](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1b9c66fcea9c93f1a45dad16337f0593e7933b5d/slides/1_1_Getting_Started.html)** |
+| *Friday* | *10:00 - 10:10*  | *Break*                             |
+| **Friday** | **10:10 - 12:00** | **[Data Types & Loading]()**            |
+|*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
+| **Friday** | **13:00 - 14:45** | **[Data Wrangling]()**      |
+| *Friday* | *14:45 - 15:00*  | *Break*                             |
+| **Friday** | **15:00 - 16:00**  | **[Data Workflows & Github]()**     |
+| *Friday* | *16:00 - 16:10*  | *Break*                             |
+| **Friday** | **16:10 - 17:00**  | **[Tidy Tuesday -- Group Work ]()**     |
 
 ---
 
-### Day 2: [24-05]
+<!--### Day 2: [24-05]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
 | **Saturday** | **12:00 - 13:00** | **[Data Wrangling 2.0](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/167de8e72ac12083028f2eb87f2993fd7db07403/slides/2_2_Data_Wrangling_Part2.html)** |
@@ -54,30 +56,20 @@ By the end of the course participants should be:
 | *Monday* | *13:30 - 14:30*  | *Break*                             |
 | **Monday** | **14:30 - 15:00** | **[Reproducible Reporting with R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/2e7fcea4be42f0e941eabae26ea1ac66116179a4/slides/5_1_Reporting_w_Rmarkdown.html)** |
 |*Monday*     | *15:00 - 15:15* | *Break*                       |
-| **Monday** | **15:15 - 16:00** | **[Hands-on R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/2e7fcea4be42f0e941eabae26ea1ac66116179a4/exercises/Exercise_5_1_1_R_Markdown.html)**      |
+| **Monday** | **15:15 - 16:00** | **[Hands-on R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/2e7fcea4be42f0e941eabae26ea1ac66116179a4/exercises/Exercise_5_1_1_R_Markdown.html)**      |-->
 
----
-### Day 4: [24-06]
+<!-----
+-->
+<!--### Day 4: [24-06]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
 | **Tuesday** | **12:00 - 13:30** | **[Excursion Shiny APP](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/4c277723ab55feb53e04ace25fe2036cdeb1d2ae/slides/5_2_Outlook.html)** |
 | *Tuesday* | *13:30 - 14:30*  | *Lunch Break*                             |
 | **Tuesday** | **14:00 - 14:20** | **[Excursion Applications in R (LLMs)](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/4423f9605080d80fbf33c1154bc770153186a37d/slides/5_3_ApplicationR.html)**            |
 |*Tuesday*     |*14:20 - 14:35* | *Break*                       |
-| **Tuesday** | **14:35 - 16:00** | **[Group data challenge](https://github.com/rfordatascience/tidytuesday)**      |
+| **Tuesday** | **14:35 - 16:00** | **[Group data challenge](https://github.com/rfordatascience/tidytuesday)**      |-->
 
 
-
-
----
-### Day 5: [25-06]
-| Day         | Time            | Topic                                |
-|-------------|-----------------|--------------------------------------|
-| **Wednesday** | **12:00 - 13:00** | **Group data challenge** |
-| *Wednesday* | *13:00 - 13:15*  | *Break*                             |
-| **Wednesday** | **13:15 - 14:00** | **Group data challenge**            |
-|*Wednesday*     | *14:00 - 15:00* | *Lunch Break*                       |
-| **Wednesday** | **15:00 - 16:00** | **Group presentations and Wrap-up**      |
 
 
 
