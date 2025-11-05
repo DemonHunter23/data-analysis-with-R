@@ -30,7 +30,7 @@ By the end of the course participants should be:
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
 | **Friday** | **13:00 - 14:45** | **[Data Wrangling]()**      |
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
-| **Friday** | **15:00 - 16:00**  | **[Data Workflows & Github]()**     |
+| **Friday** | **15:00 - 16:00**  | **[Data Workflows & Github](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/aa874fa29b78263c80af38a82c16e6235776514b/slides/1_3_Appendix_Setup_Workflow_Help.html)**     |
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
 | **Friday** | **16:10 - 17:00**  | **[Tidy Tuesday -- Group Work ]()**     |
 
