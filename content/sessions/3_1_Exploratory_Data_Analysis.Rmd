@@ -2,7 +2,7 @@
 title: " Data Literacy: Introduction to R "
 subtitle: "Exploratory Data Analysis"
 author: "Veronika Batzdorfer"
-date: "2025-05-24"
+date: "2025-11-07"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -20,9 +20,15 @@ layout: true
 
 In this session, we will focus on the following:
 
-- summary statistics (for numeric variables)
-- frequencies & proportions (for categorical variables)
-- cross-tabulations & correlations
+- Compute summary statistics for numeric variables
+
+- Produce counts, proportions and crosstabs for categorical variables
+
+- Use group_by() + summarize() and across() for group summaries
+
+- Run simple correlation analyses and interpret them
+
+- Create concise EDA pipelines and diagnostic plots
 
 
 ---
@@ -35,114 +41,62 @@ In the previous sessions, we have tried to focus on a small set of packages (mos
 
 ---
 
-## Wrangling pipeline: Import data, select, & rename variables 
+## Wrangling pipeline:  Load packages & prepare data
 
 .small[
 ```{r load-data, message = F, warning=FALSE}
-library(sjlabelled)
-library(tidyverse)
-library(haven)
-library(dplyr)
 
-stackoverflow_survey_questions <- read_csv("./data/stackoverflow_survey_questions.csv")
+library(tidyverse)   # dplyr, ggplot2, tidyr, etc.
+library(janitor)     # tabyl, adorn_*
+library(corrr)       # neat correlation tibbles
+library(broom)       # tidy test results 
 
-stackoverflow_survey_single_response <- read_csv("./data/stackoverflow_survey_single_response.csv")
+# prepare mtcars: convert some numeric columns to factors and relabel
+data("mtcars")
+df <- mtcars %>%
+  rownames_to_column(var = "model") %>%
+  mutate(
+    cyl = factor(cyl, levels = c(4,6,8), labels = c("4cyl","6cyl","8cyl")),
+    gear = factor(gear),
+    am   = factor(am, levels = c(0,1), labels = c("automatic","manual"))
+  ) %>%
+  as_tibble()
 
-qname_levels_single_response_crosswalk <- read_csv("./data/qname_levels_single_response_crosswalk.csv")
-
+glimpse(df)
 ```
 
 ```{r select-rename}
-tuesdata_eda <- stackoverflow_survey_single_response %>% 
-  select(age,
-         main_branch,
-         ai_select,
-         ai_sent,
-         ai_acc,
-         ai_complex,
-         ai_threat,
-         partici_freq = so_part_freq
-   )
-```
-]
-
----
-
-## Wrangling pipeline: Change variable types & recode values
-
-.small[
-```{r var-type-recode}
-tuesdata_eda <- tuesdata_eda %>% 
-    mutate(skills_code = recode(main_branch,
-                            `1` = 5,
-                            `5` = 4,
-                            `3` = 3,
-                            `4` = 2,
-                            `2` = 1),
-           ai_threat = recode_factor(ai_threat,
-                               `1` = "Unsure",
-                               `2` = "No",
-                               `3` = "yes"),
-           agec = recode_factor(age,
-                                `1`= "18-24 years",
-                                `2`= "25-34 years",
-                                `3` = "35-44 years",
-                                `4` = "45-54 years",
-                                `5` = "55-64 years",
-                                `6` = "65 years or older",
-                                .ordered = TRUE),
-           ai_acc = recode_factor(ai_acc,
-                                      `1`= "Highly distrust",
-                                      `4`= "Somewhat distrust",
-                                      `5` = "Somewhat trust",
-                                      `2` = "Highly trust",
-                                      `3` = "Neither trust nor distrust"
-                                      )
-           
-           )
-
-```
-]
-
-
-
----
-
-## `dplyr::summarize()`
-
-.small[
-```{r summarize-example}
-tuesdata_eda  %>% 
+df %>%
   summarize(
-    mean_partici_freq = mean(partici_freq, na.rm = TRUE),
-    sd_partici_freq = sd(partici_freq, na.rm = TRUE),
-    var_partici_freq = var(partici_freq, na.rm = TRUE),
-    min_partici_freq = min(partici_freq, na.rm = TRUE),
-    max_partici_freq = max(partici_freq, na.rm = TRUE)
-  ) %>% 
-  round(2) # round to 2 decimal places
+    mean_mpg = mean(mpg),
+    sd_mpg   = sd(mpg),
+    median_hp = median(hp),
+    iqr_wt    = IQR(wt),
+    min_qsec  = min(qsec),
+    max_qsec  = max(qsec)
+  ) %>%
+  round(2)
+
 ```
 ]
 
 ---
-
 ## `dplyr::group_by()`
 
 The `dplyr` function `group_by()` creates data frames (tibbles) that are grouped by one or more variables. 
 
 ```{r group-by, eval=FALSE}
-tuesdata_eda  %>% 
-  filter(!is.na(skills_code)) %>% # only use cases where skills_code is not missing
-  group_by(skills_code) %>%
-   summarize(
-    mean_partici_freq = mean(partici_freq, na.rm = TRUE),
-    sd_partici_freq = sd(partici_freq, na.rm = TRUE),
-    var_partici_freq = var(partici_freq, na.rm = TRUE),
-    min_partici_freq = min(partici_freq, na.rm = TRUE),
-    max_partici_freq = max(partici_freq, na.rm = TRUE)
-  ) %>% 
+
+df %>%
+  group_by(cyl) %>%
+  summarize(
+    n = n(),
+    mean_mpg = mean(mpg),
+    sd_mpg   = sd(mpg),
+    mean_hp  = mean(hp)
+  ) %>%
   ungroup()
-  
+
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -161,44 +115,23 @@ class: middle
 
 Keep in mind that `group_by()` changes the class of a dataframe. To avoid (accidentally) continuing to perform operations groupwise, it is necessary to use the .highlight[`ungroup()`] function (typically at the end of a pipe). 
 
-```{r ungroup}
-class(tuesdata_eda)
-
-tuesdata_eda %>% 
-  group_by(skills_code) %>% 
-  class()
-
-```
-
 ---
 
 ## `dplyr::across()`
 
-To produce grouped summary statistics for multiple variables we can use the `dplyr` function `across()`  *Note*: We only use cases without missing data for any of the variables here (= listwise deletion).
+Multiple summaries for many columns.  
 
 ```{r across, eval=FALSE}
-tuesdata_eda %>%
-#-- Select only the 'skills_code' column and all columns that start with "ai"
-  select(skills_code, starts_with("ai"), agec) %>%
-#-- Remove the columns 'ai_threat' and 'ai_acc' from the selection
-  select(-ai_threat, -ai_acc) %>%
-  
-#-- Drop rows that contain any NA (missing) values
-  drop_na() %>%
-  
-#-- Group the data by the 'age' column
-  group_by(agec) %>%
-#-- For each group, summarize the AI-related columns
+df %>%
+  select(cyl, mpg, hp, wt, qsec) %>%
+  group_by(cyl) %>%
   summarize(
-    across(
-      starts_with("ai"),        # Apply functions to all columns starting with "ai"
-      list(
-        mean = mean,            # Calculate mean
-        sd = sd                 # Calculate standard deviation
-      ),
-      .names = "{col}_{fn}"     # Name new columns like "ai_future_mean", "ai_future_sd", etc.
-    )
-  )
+    across(mpg:qsec,
+           list(mean = ~mean(.x), sd = ~sd(.x)),
+           .names = "{col}_{fn}")
+  ) %>%
+  ungroup()
+
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -218,106 +151,45 @@ class: middle
 A simple way of looking at frequencies (e.g., for categorical variables) that we have already seen before is the `base R` function `table()`.
 
 ```{r table}
-table(tuesdata_eda$agec)
+table(df$cyl)
 ```
 
 If you also want to include `NA` in the frequency counts, you need to specify the argument `useNA = "always"`.
 
 ```{r table-NA}
-table(tuesdata_eda$agec, useNA = "always")
+table(df$cyl, useNA = "always")
 ```
 
 ---
 
-## Proportions with `prop.table()`
+## Proportions with `tidyverse`
 
-If you want proportions instead of raw counts, you can use the `base R` function `prop.table()`. 
 
-**NB**: You need to apply this function to an output produced by `table()`. 
-
-.small[
 ```{r prop-table}
-prop.table(table(tuesdata_eda$ai_acc))
 
-prop.table(table(tuesdata_eda$ai_acc , useNA = "always"))
-```
-]
-
----
-
-## Proportions with `prop.table()`
-
-If you want fewer decimals places in the output, you can wrap the the `prop.table()` function in a `round()` call.
-
-```{r prop-round}
-round(prop.table(table(tuesdata_eda$ai_acc, useNA = "always")), 3) # rounded to 3 decimal places
-```
-
-Or if you want percentages...
-
-```{r prop-perc}
-round((prop.table(table(tuesdata_eda$ai_acc, useNA = "always")) * 100), 2)
+# tidyverse approach
+df %>%
+  count(cyl) %>%
+  mutate(prop = n / sum(n))
 ```
 
 ---
+
 
 ## Frequencies and proportions with `janitor::tabyl()`
 
-The [`janitor` package](https://github.com/sfirke/janitor) that we briefly mentioned in the first session on data wrangling also provides the [`tabyl()` function](https://sfirke.github.io/janitor/articles/tabyls.html) for creating frequency and proportion tables:
+The [`janitor` package](https://github.com/sfirke/janitor) provides the [`tabyl()` function](https://sfirke.github.io/janitor/articles/tabyls.html) for creating frequency and proportion tables:
 
 
 ```{r tabyl, message = F}
 library(janitor)
 
-threat_stats <- tuesdata_eda %>% 
-  tabyl(ai_threat) %>% 
-  adorn_pct_formatting(digits = 2, 
-                       affix_sign = TRUE)
-
-threat_stats
+df %>%
+  tabyl(cyl) %>%
+  adorn_pct_formatting(digits = 1)
 ```
 
 ---
-
-## Frequencies and proportions with `janitor::tabyl()`
-
-A nice thing about `tabyl()` is that is produces a (special type of) data frame which we can use for plotting or creating tables.
-
-```{r tabyl-class}
-class(threat_stats)
-```
-
----
-
-## Frequencies and proportions with `dplyr`
-
-We can also use `group_by()` and `summarize()` to get frequencies and proportions for variables in our data set.
-
-```{r freqprop-dplyr}
-tuesdata_eda  %>% 
-  filter(!is.na(ai_threat)) %>% 
-  group_by(ai_threat) %>% 
-  summarize(n = n()) %>% 
-  mutate(proportion = n/sum(n)) %>% 
-  ungroup()
-```
-
----
-
-## Frequencies and proportions with `dplyr`
-
-Instead of using `group_by` and `summarize()` to get frequency counts, we can also use .highlight[`count()`] from `dplyr` as a shorthand.
-
-```{r freqprop-count}
-tuesdata_eda %>% 
-  filter(!is.na(ai_threat)) %>% 
-  count(ai_threat) %>% 
-  mutate(proportion = n/sum(n)) %>% 
-  ungroup()
-```
-
----
-
 ## Tables in `R`
 
 There are typically two types of outputs you can produce with `R` for further use in reports or publications: tables and plots. 
@@ -332,12 +204,6 @@ As with almost everything in `R`, there are many options (read: packages) for cr
 
 ## Summary tables with `stargazer`
 
-While there is an ever-growing list of `R` packages for creating tables with many new (promising) contenders (such as [`flextable`](https://davidgohel.github.io/flextable/index.html) or [`gt`](https://gt.rstudio.com/index.html)), `stargazer` is an established and widely-used tool for creating ACSII (plain text), `LaTeX`, and `HTML` table output. 
-
----
-
-## Summary tables with `stargazer`
-
 If we, e.g., want to create a summary statistics table as text output (e.g., for printing in the `R` console), we can use `stargazer` for that. 
 
 **NB**: As the main `stargazer()` function does not work with tibbles, we need to convert our data to a regular data frame. 
@@ -345,10 +211,10 @@ If we, e.g., want to create a summary statistics table as text output (e.g., for
 ```{r stargazer-text, eval=FALSE}
 library(stargazer)
 
-tuesdata_eda  %>% 
-  select(ai_threat,
-         partici_freq,
-         ai_acc) %>% 
+df  %>% 
+  select(mpg,
+         cyl,
+         gear) %>% 
   as.data.frame() %>% 
   stargazer(type = "text",
             digits = 2,
@@ -368,32 +234,6 @@ class: middle
 
 ---
 
-## Summary tables with `stargazer`
-
-`stargazer` also supports `HTML` and `LaTeX` as output formats. We can export the output for further use (e.g., with our `LaTeX` editor of choice).
-
-```{r stargazer-latex, eval=FALSE}
-# We create a directory for output files first
-dir.create("./output")
-
-tuesdata_eda   %>% 
- select(ai_threat,
-         partici_freq,
-         ai_acc) %>% 
-  as.data.frame() %>% 
-  stargazer(type = "latex",
-            digits = 2,
-            out = "./output/stargazer_summary.tex",
-            title="Descriptive statistics")
-```
-
-.small[
-*Note*: help file for the `stargazer()` function (via `?stargazer`)
-]
-
-
----
-
 ## Relationships between variables
 
 In the following, we will briefly discuss some options for two methods of exploring relationships between variables:
@@ -409,53 +249,17 @@ In the following, we will briefly discuss some options for two methods of explor
 You can use the `base R` functions `table()` and `prop.table()`
 
 ```{r base-crosstabs}
-table(tuesdata_eda$ai_complex, tuesdata_eda$agec) # rows, columns
 
-round(prop.table(table(tuesdata_eda$ai_complex, tuesdata_eda$agec))*100, 2)
-```
+# base R contingency table
+tab <- table(df$cyl, df$am)
+tab
 
-
----
-
-## Crosstabs with `dplyr`
-
-We can use also functions from `dplyr` to create crosstabs including frequencies.
-
-```{r dplyr-crosstabs-freq}
-tuesdata_eda %>%
-  
-#-- Filter out rows where 'ai_complex' or 'agec' is missing (i.e., keep only complete cases)
-  filter(!is.na(ai_complex),
-         !is.na(agec)) %>%
-  
-#-- Count how many times each combi of 'agec' (age category) and 'ai_complex' appears
-  count(agec, ai_complex) %>%
-  
-#-- Reshape the data: make each unique value of 'ai_complex' a separate column
-  pivot_wider(
-    names_from = ai_complex,   # Column values in 'ai_complex' become new column names
-    values_from = n            # Use counts (`n`) as the values in the new columns
-  )
+# row percentages
+round(prop.table(tab, margin = 1) * 100, 1)
 
 ```
 
 
-
----
-
-## Crosstabs with `dplyr`
-Create crosstabs including percentages
-
-```{r dplyr-crosstabs-prop}
-tuesdata_eda %>% 
-  filter(!is.na(ai_complex),
-         !is.na(agec)) %>% 
-  count(agec, ai_complex)  %>% 
-  mutate(proportion = n/sum(n)*100) %>%
-  select(-n) %>% 
-  pivot_wider(names_from = ai_complex,
-              values_from = proportion)
-```
 
 ---
 
@@ -467,14 +271,14 @@ The `tabyl()` function from the `janitor` package provides quite a few options f
 ```{r tabyl-crosstabs}
 library(janitor)
 
-tuesdata_eda %>% 
-  filter(!is.na(ai_complex),
-         !is.na(agec)) %>% 
-  tabyl(agec, ai_complex) %>% 
-  adorn_totals(where = c("row","col")) %>% 
-  adorn_percentages(denominator = "row") %>% 
-  adorn_pct_formatting(digits = 2) %>% 
+df %>%
+  tabyl(cyl, am) %>%
+  adorn_totals("both") %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 1) %>%
   adorn_ns(position = "front")
+
+
 ```
 ]
 
@@ -488,47 +292,62 @@ Another quite very versatile option for creating crosstabs as well as output bas
 
 ---
 
-## Chi-Square Test
+## Chi-Square for independence (categorical)
 
 We can use the `summary()` function from `base R` in combination with `table()` to perform a chi-square test.
 
 
 ```{r chi-square-base}
-#--Are age and AI acceptance independent? (Does AI acceptance differ across age groups?)
-summary(table(tuesdata_eda $agec, tuesdata_eda$ai_acc ))
+#--Are cyl and am independent? ------
+
+# contingency table for cyl vs am
+tbl <- df %>% count(cyl, am) %>% 
+  pivot_wider(names_from = am, values_from = n, values_fill = 0)
+
+chisq_res <- janitor::chisq.test(as.matrix(tbl %>% select(-cyl)))
+
+chisq_res
+
 
 ```
 
 ---
 
-## Chi-Square Test
 
-Most of the other packages that include functions for crosstabs that we mentioned before can also be used for chi-square tests: For example, the `janitor` package.
-
-```{r chi-sq-janitor}
-tuesdata_eda %>% 
-  filter(!is.na(ai_acc),
-         !is.na(agec)) %>% 
-  tabyl(agec, ai_acc) %>%
-  chisq.test()
+```{r}
+tidy(chisq_res) # broom::tidy for neat display
 ```
+
+
 
 ---
 
 ## Correlations with `base R`
 
-The `base R` function `cor()` computes the correlation coefficient(s) between two or more variables. This function can be used to calculate *Pearson's r*, *Kendall's tau*, and *Spearman's rho*. We also need to specify how we want to deal with missing values (e.g., use pairwise complete observations). For example, let's look at the correlations between the coding skills, age and participation frequency:
+The `base R` function `cor()` computes the correlation coefficient(s) between two or more variables. This function can be used to calculate *Pearson's r*, *Kendall's tau*, and *Spearman's rho*. We also need to specify how we want to deal with missing values (e.g., use pairwise complete observations). 
 
 .small[
 ```{r corr-base}
-skills <- tuesdata_eda  %>% 
-  select(skills_code,age,partici_freq)
+nums <- df %>% select(mpg, hp, wt, qsec, disp)
 
-cor(skills,
-    use = "pairwise.complete.obs",
-    method = "pearson")
+# base R correlation matrix (pairwise complete)
+cor(nums, use = "pairwise.complete.obs", method = "pearson")
+
+
 ```
 ]
+
+
+---
+
+
+```{r}
+# corrr style (tidy)
+nums %>%
+  correlate() %>%
+  stretch() %>%            # long form
+  arrange(desc(abs(r)))
+```
 
 
 ---
@@ -541,7 +360,7 @@ The [`corrr` package](https://corrr.tidymodels.org/) is part of the [`tidymodels
 ```{r corr}
 library(corrr)
 
-correlate(skills)
+correlate(nums)
 ```
 ]
 
@@ -553,32 +372,26 @@ The `corrr` package provides several functions for tweaking/optimizing the outpu
 
 .small[
 ```{r corr-output-tweaks}
-skills %>% 
+nums %>% 
   correlate() %>% 
   shave() %>% 
   fashion()
 ```
 ]
 
----
-
-## The `correlation` package
-
-The [`correlation` package](https://easystats.github.io/correlation/) is part of the [`easystats` collection of packages](https://easystats.github.io/easystats/) (also called the `Easyverse`). It provides a much wider range of correlation types than the `base R` function `cor()` and the `correlate()` function from the `corrr` package (e.g., biserial and tetrachoric correlations for factors). Its core is the `correlation()` function.
-
-```{r correlation, eval=FALSE}
-library(correlation)
-
-correlation(skills)
-```
-
-.right[`r emo::ji("left_arrow_curving_right")`]
 
 ---
+## Correlation diagnostics
 
-class: middle
+```{r}
+# scatter with smoothing
+ggplot(df, aes(x = wt, y = mpg, color = cyl)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
 
-```{r ref.label = "correlation", echo = F}
+# pairs plot quick overview
+pairs(select(df, mpg, hp, wt, qsec), main = "Pairs for selected vars")
 
 ```
 
@@ -686,7 +499,7 @@ The message from the `datasaurus_dozen` examples should be clear. Relying only o
 
 - bivariate distributions
 
-For that reason (and because it is fun and `R` has a lot to offer in that regard), we will dive `r ji("goggles")` right into data visualization in the next session...
+For that reason (and because it is fun and `R` has a lot to offer in that regard), we will dive `r ji("goggles")` 
 
 ---
 
