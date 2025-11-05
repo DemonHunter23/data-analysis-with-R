@@ -1,6 +1,6 @@
 ---
 title: "Data Literacy: Introduction to R"
-subtitle: "Data Types, Import & Export"
+subtitle: "Basic Data Structures & Importing"
 author: "Veronika Batzdorfer"
 date: "2025-11-07"
 presenter: Veronika
@@ -111,11 +111,24 @@ At first glance, a *character* is a letter somewhere between a-z. *String* in th
 Factors are data types that assume that their values are not continuous, e.g., as in [ordinal](https://en.wikipedia.org/wiki/Level_of_measurement#Ordinal_scale) or [nominal](https://en.wikipedia.org/wiki/Level_of_measurement#Nominal_level) data.
 
 ```{r factor}
-factor(1.1)
-factor("Hi. I am a character string, the 1st of its kind!")
+
+sizes <- c("small", "medium", "large", "medium", "small")
+
+sizes
+
+# Convert to a factor /w levels
+sizes_factor <- factor(sizes)
+
+
+sizes_factor
+str(sizes_factor)
+
+
+sizes_ordered <- factor(sizes, levels = c("small", "medium", "large"), ordered = TRUE)
+sizes_ordered
+
 ```
 
-Factors take *numeric* data or *character* strings as input as they simply convert them into so-called **levels**.
 
 ---
 
@@ -173,17 +186,19 @@ woRkshoptools::include_picture("9213.1526125966.png")
 
 ## Vectors
 
-Vectors are built by enclosing your content with `c()` ("c" for "concatenate")
+Vectors are built by enclosing your content with `c()` ("c" for "concatenate").
+Operations are applied to all elements of a vector automatically.
 
 ```{r vectors}
 numeric_vector   <- c(1, 2, 3, 4)
 character_vector <- c("a", "b", "c", "d")
+ 
+numeric_vector[3] #inspect entry 3 from vectornumeric_vector
 
-numeric_vector
-character_vector
+length(character_vector) # vector length
 ```
 
-Vectors are really like vectors in mathematics. Initially, it doesn't matter if you look at them as column or row vectors.
+
 
 ---
 
@@ -204,7 +219,7 @@ rbind(numeric_vector, character_vector)
 
 ## Matrices
 
-Matrices are the basic rectangular data format in R.
+They are a collection of elements of the **same type** (string, numeric OR logical).
 
 ```{r matrix-2}
 fancy_matrix <- matrix(1:16, nrow = 4)
@@ -223,33 +238,22 @@ c(1, 2, "evil string")
 ## Data frames
 
 
+- variables are columns and observations are rows
+- tabular data
 
-.tinyish[
-```{r data-frames, eval = FALSE}
-library(randomNames) # a name generator package
+```{r fake-df}
+students <- data.frame(
+  Name = c("Alice", "Ben", "Chloe", "David", "Ella"),
+  Age = c(20, 22, 21, 23, 20),
+  Major = c("Biology", "Math", "History", "Economics", "Physics"),
+  Grade = c("A", "B", "A", "C", "B")
+)
 
-fancy_data <-
-  data.frame( 
-    who = 
-      randomNames(n = 10, which.names = "first"),
-    age = 
-      sample(14:49, 10, replace = TRUE), # you see what we are doing here?   
-    salary_2018 = 
-      sample(15:100, 10, replace = TRUE),  
-    salary_2019 = 
-      sample(15:100, 10, replace = TRUE)
-  )
- 
-fancy_data
+
+print(students)
 ```
-]
 
-.right[`r emo::ji("left_arrow_curving_right")`]
 
----
-class: middle
-```{r ref.label = "data-frames", echo = FALSE}
-```
 
 ---
 
@@ -279,7 +283,8 @@ woRkshoptools::include_picture("tibble.png")
 
 ```{r as_tibbles}
 library(tibble)
-as_tibble(fancy_data)
+
+as_tibble(students)
 ```
 
 ---
@@ -294,7 +299,7 @@ fancy_list <-
     numeric_vector,
     character_vector,
     fancy_matrix,
-    fancy_data
+    students
   )
 
 fancy_list
@@ -317,7 +322,7 @@ class: middle
 fancy_nested_list <-
   list(
     fancy_vectors = list(numeric_vector, character_vector),
-    data_stuff = list(fancy_matrix, fancy_data)
+    data_stuff = list(fancy_matrix, students)
   )
 
 fancy_nested_list
@@ -376,7 +381,7 @@ fancy_matrix[2:4, 1:3] # rows 2,3,4 of columns 1,2,3
 A nice feature of `data.frames` or `tibbles` is that their columns are names, just as variable names in ordinary data. 
 
 ```{r column-name}
-fancy_data$who
+students$Name
 ```
 
 Just place a `$`-sign between the data object and the variable name.
@@ -391,7 +396,7 @@ Sometimes we also have to rely on character strings as input information, e.g., 
 Not only this way:
 
 ```{r square-bracket}
-fancy_data[1]
+students[1]
 ```
 ]
 
@@ -399,7 +404,7 @@ fancy_data[1]
 But also this way:
 
 ```{r by-name}
-fancy_data["who"]
+students["Name"]
 ```
 ]
  
@@ -423,16 +428,16 @@ The most high-level information you can get is about the object type and its dim
 .small[
 ```{r class-dim}
 # object type
-class(fancy_data)
+class(students)
 
 # number of rows and columns
-dim(fancy_data)
+dim(students)
 
 # number of rows
-nrow(fancy_data)
+nrow(students)
 
 # number of columns
-ncol(fancy_data)
+ncol(students)
 ```
 ]
 
@@ -443,7 +448,7 @@ ncol(fancy_data)
 You can also print the first 6 lines of the data frame with `head()`. You can easily change the number of lines by providing the number as the second argument to the `head()` function.
 
 ```{r head}
-head(fancy_data, 3)
+head(students, 3)
 ```
 
 ---
@@ -453,7 +458,7 @@ head(fancy_data, 3)
 If we want some more (detailed) information about the data set or object, we can use the `base R` function `str()`.
 
 ```{r str}
-str(fancy_data)
+str(students)
 ```
 
 ---
@@ -477,25 +482,48 @@ woRkshoptools::include_picture("rstudio_view.png")
 We can print all names of an object using the `names()` function...
 
 ```{r receiving-names}
-names(fancy_data)
+names(students)
 ```
 
 ...and we can also change names with it.
 
 ```{r changing-names}
-names(fancy_data) <- c("name", "age", "salary_2018", "salary_2019")
+names(students) <- c("name", "age", "studies", "performance")
 
-names(fancy_data)
+names(students)
 ```
 
 
 ---
 
-class: center, middle
+# [Exercise]
 
-# [Exercise](https://rawcdn.githack.com/nika-akin/r-intro/9d05476f895e390df08662eecbefd4137f67acf4/exercises/Exercise_1_2_1_Data_Types.html) time `r emo::ji("weight_lifting_woman")``r emo::ji("muscle")``r emo::ji("running_man")``r emo::ji("biking_man")`
+- A. Create a vector `fav_music` with the names of your favorite artists.
 
-## [Solutions](https://rawcdn.githack.com/nika-akin/r-intro/9d05476f895e390df08662eecbefd4137f67acf4/solutions/Exercise_1_2_1_Data_Types.html)
+- B. Create a vector `num_records` with the number of songs you have in your collection for each artist.
+
+- C. Create a vector `num_concert` with the number of times you attented the concerts for each artist.
+
+- D. Combine everything into a **data frame**, name it as `my_music`. Change the labels of the data in the columns `artist`, `records`, and `concerts`.
+
+- E. Extract the variable `num_records` from the data frame `my_music`.
+
+
+---
+
+# [Solved]
+
+
+```{r}
+fav_music <- c("Muse", "Mozart", "Britney Spears", "Nirvana")
+num_concerts <- c(2, 0, 1, 0)
+num_records <- c(4, 2, 1, 8)
+my_music <- data.frame(fav_music, num_concerts, num_records)
+names(my_music) <- c("artist", "concerts", "records")
+
+my_music$records
+```
+
 
 ---
 
@@ -565,7 +593,7 @@ woRkshoptools::include_picture("Datenimport.PNG")
 
 **What you will learn**
 - Getting the most common data formats into `R`
-  - e.g., CSV, *Stata*, *SPSS*, or *Excel* spreadsheets
+  - e.g., CSV, *.txt*, or *Excel* spreadsheets
 - Using the different methods of doing that
 - We will rely a lot on packages and functions from the `tidyverse` instead of using `base R`
 
@@ -581,22 +609,6 @@ woRkshoptools::include_picture("rstudio_import.PNG")
 ```
 
 ---
-
-## Where to find data
-
-**Browse Button in `RStudio`**
-```{r, echo = FALSE, out.width="75%"}
-woRkshoptools::include_picture("importBrowse.PNG")
-```
-
-**Code preview in `Rstudio`**
-```{r, echo = FALSE, out.width="75%"}
-woRkshoptools::include_picture("codepreview.PNG")
-```
-
-
----
-
 ## Simple vs. not so simple file formats
 
 Basic file formats, such as CSV (comma-separated value file), can directly be imported into `R`
@@ -604,19 +616,42 @@ Basic file formats, such as CSV (comma-separated value file), can directly be im
 - few metadata
 - basically text files
 
-Other file formats, particularly the proprietary ones, require the use of additional packages
-- they are complex
-- a lot of metadata (think of all the labels in an *SPSS* file)
-- they are binary (1110101)
-
 ---
 
 
-## Disclaimer
+## Importing a `.txt` file
 
-**In the following slides, we'll jump right into importing data. We use a lot of different packages for this purpose, and you don't have to remember everything. It's just for making a point of how agnostic `R` actually is regarding the file type. Later on, we will dive more into the specifics of importing.**
+`read.table` is the most basic importing function
+
+
+```{r donuts, eval=FALSE}
+
+path.donuts <- file.path(path, "donut.txt")
+path.donuts
+
+# inspect path name
+donuts <- read.table(path.donuts, header = FALSE,
+col.names = c("type", "calories", "sodium"))
+
+str(donuts)# inspect data imported
+```
+
+
+```{rdonut2, eval=FALSE}
+donuts2 <- read.table(path.donuts, header = FALSE,
+col.names = c("type", "calories", "sodium"),
+colClasses = c("factor", "NULL", "numeric"))
+
+
+str(hotdogs2)
+
+```
+
+
+What happenes here?
 
 ---
+
 
 ## Importing a CSV file using `base R`
 
@@ -662,13 +697,7 @@ Note the column specifications: `readr` 'guesses' them based on the first 1000 o
 library(readxl)
 
 unicorns <- read_xlsx("./data/observations.xlsx")
-```
 
-No output `r emo::ji("frowning_face")`
-
----
-class: middle
-```{r readxl_example_output, echo = TRUE}
 unicorns
 ```
 
