@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Data Types, Import & Export"
 author: "Veronika Batzdorfer"
-date: "2025-05-23"
+date: "2025-11-07"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -41,7 +41,6 @@ woRkshoptools::include_picture("./import_data.png")
 data()
 
 ```
-
 
 
 

@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Workflow & Github"
 author: "Veronika Batzdorfer"
-date: "2025-05-23"
+date: "2025-11-07"
 presenter: Veronika
 ---
 layout: true 
@@ -15,7 +15,7 @@ layout: true
 
 ## Space of names `r ji("spades")`
 
-Packages are developed (and maintained) by different people and teams and - according to [METACRAN](https://www.r-pkg.org/) - there are currently more than 18,400 packages available on *CRAN*. Also, there are clear limits for creativity in naming functions. Hence, different packages can use the same function names. This can create what is called a .highlight["namespace conflict"]. 
+Packages are developed/maintained by different people and teams and - according to [METACRAN](https://www.r-pkg.org/) - there are currently more than 18,400 packages available on *CRAN*. Also, there are clear limits for creativity in naming functions. Hence, different packages can use the same function names. This can create what is called a .highlight["namespace conflict"]. 
 
 ---
 
@@ -43,11 +43,6 @@ stats::filter() # package_name::function_name()
 
 This is also a way of accessing functions from an installed package without loading it with the `library()` command.
 
-You can also unload a package, but this generally is/should not be the preferred option.
-
-```{r unload-pkg}
-detach("package:dplyr", unload = TRUE)
-```
 
 ---
 
@@ -65,7 +60,6 @@ You can update all packages you have installed with the following command:
 update.packages()
 ```
 
-If you want to update individual packages, the easiest way is to install them again (the usual way).
 
 Another option for updating specific packages is the following:
 
@@ -92,9 +86,8 @@ remove.packages(c("correlation", "effectsize"))
 
 ## Advanced commenting of `R` scripts
 
-A neat trick in *RStudio* is that if you end a comment preceding a block of code with `####` (or more `#` or `----` or more dashes), you create a section in your script that can be collapsed and expanded in the *RStudio* script pane. This also creates a small interactive table of contents for the script at the bottom of the script pane. 
+A neat trick in *RStudio* is that if you end a comment preceding a block of code with `####` (or more `#` or `----` or more dashes), you create a section in your script that can be collapsed and expanded in the *RStudio* script pane. This also creates a small interactive table of contents. 
 
-You can also use the keyboard shortcut <kbd>Ctrl + Shift + R</kbd> (*Windows* & *Linux*)/<kbd>Cmd + Shift + R</kbd> (*Mac*) to insert code sections.
 
 ---
 
@@ -106,21 +99,9 @@ woRkshoptools::include_picture("./script_sections_expanded_highlighted.png")
 
 ---
 
-## Advanced commenting of `R` scripts
-
-```{r, rstudio_scripts_collapsed, out.width = "100%", echo=FALSE}
-woRkshoptools::include_picture("./script_sections_collapsed_highlighted.png")
-```
-
----
-
 ## *RStudio* projects
 
-*RStudio* projects are helpful tool for developing a [project-oriented workflow](https://rstats.wtf/project-oriented-workflow.html) that can enhance reproducibility.
-
-You can create a project via the *RStudio* menu: `File` -> `New Project`. *RStudio* projects are associated with `.Rproj` files that contain some specific settings for the project. If you double-click on a `.Rproj` file, this opens a new instance of *RStudio* with the working directory and file browser set to the location of that file (the repository/folder for this workshop contains an `.Rproj` file, if you want to try this out).
-
-Explaining *RStudio* projects in detail is beyond the scope of this course, but there are good tutorials available, e.g., on the [*RStudio* support site](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects) or in the [respective chapter in *What They Forgot to Teach You About R*](https://rstats.wtf/project-oriented-workflow.html#rstudio-projectsl).
+You can create a project via: `File` -> `New Project`. *RStudio* projects are associated with `.Rproj` files that contain some specific settings for the project. If you double-click on a `.Rproj` file, this opens a new instance of *RStudio* with the working directory and file browser set to the location of that file (the repository/folder for this workshop contains an `.Rproj` file, if you want to try this out).
 
 ---
 
@@ -134,50 +115,14 @@ Explaining *RStudio* projects in detail is beyond the scope of this course, but 
 
 ---
 
-## *RStudio* pane layout
-
-You can adjust the size, minimize, and maximize the different panes in *RStudio* .
-You can also customize the pane layout in *RStudio* by via `Tools` -> `Global Options` -> `Pane Layout`.
-
-```{r rstudio-panes, out.width = "40%", echo=FALSE}
-woRkshoptools::include_picture("./rstudio_pane_layout.png")
-```
-
-
-
----
-
 ## `R` workspace
 
 In addition to the `Environment` tab in *RStudio*, you can view the content of your workspace via the .highlight[`ls()`] command.
 
-You can remove objects from your workspace with the `rm()` function. Note, however, that this cannot be undone, so you have to create the object again in case you need it (again).
+You can remove objects from your workspace with the .highlight[`rm()`] function.
 
 Unless you change the default settings in *RStudio* as suggested in the "Getting Started" session, `R` will save the workspace in a file called `.RData` in your current working directory and restore the workspace when you restart it. 
 
----
-
-
-## Package documentation
-
-Packages on *CRAN* include (PDF) Reference Manuals (see the [*CRAN* website for the `usethis` package](https://cran.r-project.org/web/packages/usethis/index.html) for an example) that include descriptions of all functions included in the package.
-
-Some packages also provide their own websites with detailed additional documentation (the [`quanteda` package for text analysis](https://quanteda.io/) is a good example here).
-
-If packages are hosted on *GitHub*, the associated repository normally also includes some documentation for the package. If you encounter an issue while using a package that is hosted on *GitHub*, you can also check out the `Issues` section in the *GitHub* repository for that package. 
-
----
-
-## Coding styles
-
-
-- line length (see the ["sacred 80 column rule"]( https://www.emacswiki.org/emacs/EightyColumnRule))
-- indentation
-- variable/object naming
-- comments
-- assignment rules
-
-`R` is pretty flexible in styling (compared, e.g., to `Python`, which has strict rules for indentation) which makes it even more necessary to think about these conventions.
 
 ---
 
