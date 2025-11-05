@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "101 Starting with R"
 author: "Veronika Batzdorfer"
-date: "2025-05-23"
+date: "2025-11-07"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -12,24 +12,6 @@ layout: true
 ```{r child = "./content/config/sessions_setup.Rmd", warning=FALSE}
 ```
 
----
-
-## About this course
-
-
-
-By the end of this course you should be able...
-
-- to use *RStudio*
-- to *import*, *wrangle*, and *explore* your data 
-- to create/conduct basic *visualizations* and *analyses* of your data with `R`
-- to generate reproducible research *reports* using `R Markdown`
-- to apply basic *debugging* of your code
-- to call *LLMs* in `R`
-
---
-
-**Note**: *Not a statistics workshop.*
 
 ---
 
@@ -59,21 +41,19 @@ Source: [*Packages*](https://github.com/qinwf/awesome-R#data-packages)
 ## My jou`R`ney
 
 .pull-left[
-```{r veronika-pic, echo = FALSE, fig.height=200, fig.width=200,out.width = "200%"}
+```{r veronika-pic, echo = FALSE, out.width = "150%"}
 woRkshoptools::include_picture("./interest.png")
 ```
 ]
-<br>
 
-.small[.pull-right[
-- ITZ (Institut für Technikzukünfte) working at the EU-Projekt **SoMe4Dem** (Social Media for Democracy)
-]
+.pull-right[
+.small[
 
-]
-.small[.pull-right[
-- Looking for a Bachelor/Master's thesis, let me know
-]
-]
+- ITZ (Institut für Technikzukünfte), working at the EU project SoMe4Dem (Social Media for Democracy)
+
+- Passionate about R, data visualization, and social science methods
+
+- Curious about how technology shapes democracy
 
 <br>
 
@@ -82,15 +62,16 @@ Contact:<br>
 [veronika.batzdorfer@kit.edu](mailto:veronika.batzdorfer@kit.edu) |
 [KIT website](https://sociology.itz.kit.edu/21_138.php)
 
- 
+]
+]
 
 ---
 
-## About you
+## Your JouRney
 
-- What's your name?  
+- What's your JouRney?  
 
-- Where do you work/study? What are you working on/studying?
+- What’s one problem or dataset you’d love to analyze someday?
 
 ---
 
@@ -99,7 +80,7 @@ Contact:<br>
 - The workshop consists of a combination of lectures and hands-on exercises
 
 
-- Slides & materials are available at
+- Slides & materials (and your *future submissions*) are available at
 
 .center[`https://github.com/nika-akin/data-analysis-with-R`]
 
@@ -120,54 +101,24 @@ course_day1
 course_day2
 ```
 
----
-
-## Course schedule - Day 3
-
-```{r schedule-3, echo = F}
-course_day3
-```
-
----
-## Course schedule - Day 4
-
-```{r schedule-4, echo = F}
-course_day4
-```
----
-
-## Course schedule - Day 5
-```{r schedule-5, echo = F}
-course_day5
-```
-
----
-## Follow-up Coordination
-
-### Discussion of Report Proposals 
-
-- <span style="background-color: yellow;">(**Anfang August** )</span>
-
-- Make a Zoom Appointment
-
 
 ---
 
-## Delieverable
+## Requirements 
 
-- Form Groups [~ 2-3 people] 
-- Conduct Analysis and Documentation involving:
-  - Finding **Hypotheses**
-  - Pre-process/Wrangle Data
-  - Explorative/Confirmatory Analysis
-  - Discuss Results and Analysis
-- Report your <span style="background-color: yellow;">Code and Output</span>
-- Present your research idea and workflow [10 min]
-- Write a Report on your Case Study in <span style="background-color: yellow;">R Markdown </span> 
-- Each group submits: RMarkdown code + HTML file to this github repository `assignments`
-- <span style="background-color: yellow;">Deadline: 20-08-2025</span> 
---
-- Data sources: [Tidy Tuesday Challenge on github](https://github.com/rfordatascience/tidytuesday) 
+
+| **Requirement** | **Description** |
+|------------------|------------------|
+| **Active participation** | Engage actively in discussions and coding sessions. |
+| **Create your own group challenge** | Develop your **own group challenge** (2–3 people) using [Tidy Tuesday data](https://github.com/rfordatascience/tidytuesday). |
+| **Submission** |**R Markdown (.Rmd)** and the **HTML** file to the **GitHub repository** under the folder `submissions_wise25`. |
+| **Documentation** | Document the **entire research cycle**: clear research question → data wrangling → exploratory analysis → visualization. |
+
+
+---
+## Submission
+
+- Submit by **31st January 2026** on the Github Repo and by Email 
 
 
 ---
@@ -176,6 +127,8 @@ course_day5
 
 - [David Robinson](https://www.rscreencasts.com/?ref=reddit)
 
+- Get the data directly with [tidytuesdayR](https://dslc-io.github.io/tidytuesdayR/)
+
 ```{r shiny-app, echo=FALSE}
 woRkshoptools::include_picture("./shiny.png")
 ```
@@ -183,16 +136,6 @@ woRkshoptools::include_picture("./shiny.png")
 
 
 ---
-## Evaluation
-
-```{r evaluation of seminar, out.width = "45%", echo = F}
-woRkshoptools::include_picture("./evaluation.png")
-```
-Or: .center[`https://onlineumfrage.kit.edu/evasys/online.php?p=JGCAJ          
-`]
-
----
-
 ## Why use `R`?
 
 - it is **free** and **open-source**
@@ -209,8 +152,8 @@ Or: .center[`https://onlineumfrage.kit.edu/evasys/online.php?p=JGCAJ
 - it offers extremely powerful and versatile options for **data visualization**
 --
 
-- it has a **great community** with groups like [*R-Ladies*](https://rladies.org/), the [*R Consortium*](https://www.r-consortium.org/), [*rOpenSci*](https://ropensci.org/), and many local [`R` user groups](https://jumpingrivers.github.io/meetingsR/r-user-groups.html) worldwide
-  - also check out the [*#rstats* hashtag on Twitter](https://twitter.com/search?q=%23rstats&src=typed_query)
+- it has a **great community** with groups like the [*R Consortium*](https://www.r-consortium.org/), [*rOpenSci*](https://ropensci.org/), and many local [`R` user groups](https://jumpingrivers.github.io/meetingsR/r-user-groups.html) 
+  
 --
 
 - it is becoming **increasingly popular** in [academic publications](http://r4stats.com/articles/popularity/), [programming communities like Stack Overflow](https://stackoverflow.blog/2017/10/10/impressive-growth-r/)
@@ -242,7 +185,7 @@ You can use `R` to...
 - statistical analysis & machine learning (e.g., with [tidymodels](https://www.tidymodels.org/))
 - text mining and natural language processing (e.g., with [quanteda](https://quanteda.io/))
 - collecting data, for example:
-	- surveys (or diary studies) with [formr](https://formr.org/)
+	- MediaWiki API [WikipediR](https://r-packages.io/packages/WikipediR)
 	- web scraping with [rvest](https://rvest.tidyverse.org/)
 - all sorts of visualizations, including:
 	- animated plots with [gganimate](https://gganimate.com/)
@@ -260,9 +203,9 @@ You can use `R` to...
 
 ## Installing `R`
 
-You can download `R` via the [`R` POSIT-Project website](https://posit.co/download/rstudio-desktop/). The exact installation process depends on your operating system (OS). The *R Cookbook* provides a [detailed explanation of the installation process for *Windows*, *macOS*, and *Linux/Unix*](https://rc2e.com/gettingstarted#recipe-id001).
+You can download `R` via the [`R` POSIT-Project website](https://posit.co/download/rstudio-desktop/). The exact installation process depends on your OS. The *R Cookbook* provides a [detailed explanation of the installation process for *Windows*, *macOS*, and *Linux/Unix*](https://rc2e.com/gettingstarted#recipe-id001).
 
-If you want or need to update your version of `R`, you can do this the same way as for the first-time installation. If you use *Windows*, you can also use the [`installr` package](https://github.com/talgalili/installr) to update `R` (we will talk about packages in a bit).
+If you want or need to update your version of `R`, you can do this the same way as for the first-time installation. If you use *Windows*, you can also use the [`installr` package](https://github.com/talgalili/installr) to update `R`.
 
 ---
 
@@ -309,14 +252,14 @@ woRkshoptools::include_picture("./rstudio_1st_explained.png")
 ```
 
 .smaller[
-*Note*: You will only see the `Git` tab if you have [`Git`](https://git-scm.com/) installed and set up. In new(er) versions of *RStudio*, the pane including the *Files* tab also includes a *Presentation* tab (which is meant to be used for [`Quarto`](https://quarto.org/) files.)
+*Note*: You will only see the `Git` tab if you have [`Git`](https://git-scm.com/) installed and set up. 
 ]
 
 ---
 
 ## The `R` console in *RStudio*
 
-The console is the interactive input-output window of *RStudio*. You can enter commands here and press <kbd>Enter</kbd> to execute them. Typically, the output the the commands you enter into the console will also be displayed here.
+The console is the interactive input-output window of *RStudio*. You can execute commands here. Typically, the output will also be displayed here.
 
 ---
 
@@ -375,9 +318,8 @@ options(scipen=10)
 
 ## Objects in `R`
 
-`R` is object-oriented.
-The simplest example of assignment in `R` is the assignment of a single value to an object. 
-
+`R` is <span style="background-color: yellow;">object-oriented</span>.
+ 
 
 ```{r assignment}
 x <- 10
@@ -391,7 +333,7 @@ y
 
 ## `R` objects in *RStudio*
 
-Once one or more objects have been assigned values they also appear in the `Environment` tab in *RStudio*.
+Once one or more objects have been assigned values they appear in the `Environment` tab.
 
 ```{r, rstudio-objects, out.width = "100%", echo=FALSE}
 woRkshoptools::include_picture("./rstudio_environment_objects.png")
@@ -431,15 +373,15 @@ woRkshoptools::include_picture("./mem_use_report.png")
 
 ## The two workhorses `r ji("horse")` of `R`: Functions and packages `r ji("package")`
 
-If you want to do anything in `R`, you need to use functions, and functions are provided through packages. We will go through the basics of functions and packages in `R` in the following.
+If you want to do anything in `R`, you need to use functions, and functions are provided through packages.
 
 ---
 
 ## Functions
 
-- a function takes an input -> does something with it -> produces some sort of output.
+- a function takes an <span style="background-color: yellow;">input <span> -> does something with it -> produces some sort of <span style="background-color: yellow;">output <span>.
 
-- arguments in parentheses (e.g. a value or object) as a single argument 
+- <span style="background-color: orange">**arguments**</span> in parentheses (e.g. a value or object) as a single argument 
 
 ```{r function-one-arg}
 sqrt(9)
@@ -549,7 +491,6 @@ The basic `R` system as well as a huge number of additional packages that extend
 
 When we talk about <span style="background-color: yellow;" >`base R` </span> we refer to the  packages that come with a new installation of `R` via *CRAN*. 
 
-There also is a package called `base` included with this but the `base R` system includes a number of other packages as well: `utils`, `stats`, `datasets`, `graphics`, `grDevices`, `grid`, `methods`, `tools`, `parallel`, `compiler`, `splines`, `tcltk`, `stats4`. 
 
 
 
@@ -583,7 +524,7 @@ install.packages(c("correlation", "effectsize"))
 
 `R` packages are installed in specific directories on your computer.
 
-**NB**: If you have multiple versions of `R` installed, there are directories for each version 
+**NB**: If you have multiple versions of `R` installed, there are directories for each version. 
 To find where packages are installed on your machine for the version of `R` you are currently using you can use the following command:
 
 ```{r library-path, eval = F}
@@ -699,23 +640,13 @@ You can save your script in *RStudio* via `File` -> `Save` or `Save As...`, by c
 
 To properly document your code (for your future self as well as other people who may use your code) it is good practice to use comments. In `R` scripts, you can create a comment by starting a line with a `#`.
 
-In *RStudio*, to comment or uncomment one or more lines in a script you can also select them and use the keyboard shortcut <kbd>Ctrl + Shift + C</kbd> (*Windows* & *Linux*)/<kbd>Cmd + Shift + C</kbd> (*Mac*).
+
 
 ```{r comment, eval = FALSE}
 # this is a comment
 library(tidyverse)
 ```
 
-
----
-
-## Setup and workflows for `R` and *RStudio*
-
-In this session, we will only cover the basics that are necessary for establishing such workflows. If you are interested in some further information on setting up and maintaining your installation of `R` and *RStudio* as well as the optimization of workflows, and troubleshooting, you can check out the [appendix slides with additional materials].
-
-.small[
-*Note*: Most of the recommendations in the following (as well as in the additional materials) are largely based on the freely available online book [What They Forgot to Teach You About R](https://rstats.wtf/).
-]
 
 ---
 
@@ -735,8 +666,7 @@ In *RStudio*, the current working directory is also displayed at the top of the 
 ---
 
 ## Setting the working directory via the *RStudio* GUI
-
-The *RStudio* menu `Session` -> `Set Working Directory` which provides different options:
+`Session` -> `Set Working Directory` which provides different options:
 - "To Project Directory": can be used if you have an `.Rproj` file 
 - "To Source File Location": sets the working directory to the location of the currently active source file (typically an `R` script) 
 - "To FilesPane Location": sets the working directory to the directory that is currently visible in the `Files` tab
@@ -747,7 +677,7 @@ The *RStudio* menu `Session` -> `Set Working Directory` which provides different
 ## Setting the working directory using functions
 
 
-To increase the reproducibility of your work, using functions in scripts is generally the better approach than using the *RStudio* GUI. You can set a working directory with the following command (of course, you need to replace the file path with the correct one for your system):
+Using functions in scripts is better. 
 
 ```{r setwd, eval = F}
 setwd("C:/Users/user/Documents/analysis")
@@ -757,11 +687,9 @@ setwd("C:/Users/user/Documents/analysis")
 
 ## Interlude: File paths
 
-`R` uses `Unix`-style file paths with `/`, while *Windows* uses `\` in file paths. However `\\` also works in `R` for both OS types. 
+`R` uses `Unix`-style file paths with <span style="background-color: orange;" >`/` <span>, while *Windows* uses `\` in file paths. However `\\` also works in `R` for both OS types. 
 
 There is a [Stackoverflow post](https://stackoverflow.com/questions/17605563/efficiently-convert-backslash-to-forward-slash-in-r) discussing several ways of dealing with that. 
-
-A helpful tool in this context for *Windows* users is [*Path Copy Copy*](https://pathcopycopy.github.io/) which is an add-on for the file explorer that lets you copy file paths in different formats.
 
 ---
 
@@ -773,7 +701,7 @@ There are absolute (example: "C:/Users/user/Documents/example.R") and relative f
 
 [**Relative file**](https://martinctc.github.io/blog/rstudio-projects-and-working-directories-a-beginner's-guide/) paths are relative to the current working directory.
 
-Common shorthand options for relative file paths are `.` for the current (working) directory, `..` for one folder level up (parent folder), and `~` for the home directory (which is the default working directory in `R`).
+Common shorthand options for relative file paths are <span style="background-color: orange;" >`.`<span> for the current (working) directory, `..` for one folder level up (parent folder), and `~` for the home directory (which is the default working directory in `R`).
 
 
 
@@ -833,14 +761,6 @@ knitr::include_graphics("https://github.com/allisonhorst/stats-illustrations/blo
 .center[
 <small><small>GIF by [Allison Horst](https://github.com/allisonhorst/stats-illustrations)</small></small>
 ]
-
----
-
-class: center, middle
-
-# [Exercise](https://rawcdn.githack.com/nika-akin/r-intro/9d05476f895e390df08662eecbefd4137f67acf4/exercises/Exercise_1_1_2_Packages_Scripts.html) time `r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man")`
-
-## [Solutions](https://rawcdn.githack.com/nika-akin/r-intro/9d05476f895e390df08662eecbefd4137f67acf4/solutions/Exercise_1_1_2_Packages_Scripts.html)
 
 ---
 ## Some house keeping
