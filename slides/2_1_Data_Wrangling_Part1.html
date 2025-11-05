@@ -1230,7 +1230,7 @@ names(stackoverflow_survey_single_response)
 ## Renaming variables
 
 It is good practice to use consistent naming conventions. Since `R` is .highlight[case-sensitive], we might want to only use lowercase letters.&lt;br/&gt; 
-As spaces in variable names can cause problems, we could, e.g., decide to use 🐍 *snake_case* (🐫 *camelCase* is a common alternative; 
+As spaces in variable names can cause problems, we could, e.g., decide to use 🐍 *snake_case* (🐫 *camelCase* is a common alternative; )
 
 ---
 
@@ -1263,55 +1263,6 @@ names(tuesdata_rn)
 ## [28] &quot;r_want_to_use&quot;
 ```
 
----
-
-## Renaming variables
-
-For some more advanced renaming options, you can use the `dplyr` function `rename_with()`.
-
-*Note*: The [`janitor` package](https://sfirke.github.io/janitor/) contains the function `clean_names()` that takes a data frame and creates column names that &quot;are unique and consist only of the _ character, numbers, and letters&quot; (from the help file for this function), with the default being 🐍 snake_case (but support for many other types of cases).
-
-
-``` r
-stackoverflow_survey_single_response %&gt;% 
-  dplyr::rename_with(toupper) %&gt;% 
-  names()
-```
-
-```
-##  [1] &quot;RESPONSE_ID&quot;           &quot;MAIN_BRANCH&quot;           &quot;AGE&quot;                  
-##  [4] &quot;REMOTE_WORK&quot;           &quot;ED_LEVEL&quot;              &quot;YEARS_CODE&quot;           
-##  [7] &quot;YEARS_CODE_PRO&quot;        &quot;DEV_TYPE&quot;              &quot;ORG_SIZE&quot;             
-## [10] &quot;PURCHASE_INFLUENCE&quot;    &quot;BUILDVS_BUY&quot;           &quot;COUNTRY&quot;              
-## [13] &quot;CURRENCY&quot;              &quot;COMP_TOTAL&quot;            &quot;SO_VISIT_FREQ&quot;        
-## [16] &quot;SO_ACCOUNT&quot;            &quot;SO_PART_FREQ&quot;          &quot;SO_COMM&quot;              
-## [19] &quot;AI_SELECT&quot;             &quot;AI_SENT&quot;               &quot;AI_ACC&quot;               
-## [22] &quot;AI_COMPLEX&quot;            &quot;AI_THREAT&quot;             &quot;SURVEY_LENGTH&quot;        
-## [25] &quot;SURVEY_EASE&quot;           &quot;CONVERTED_COMP_YEARLY&quot; &quot;R_USED&quot;               
-## [28] &quot;R_WANT_TO_USE&quot;
-```
-
- 
-
----
-
-## Renaming variables
-
-We can use `rename_with()` in combination with `gsub()` to remove (or change) prefixes in variable names.
-
-
-``` r
-stackoverflow_survey_single_response %&gt;% 
-  dplyr::select(ai_select:ai_threat) %&gt;% 
-  dplyr::rename_with(~ gsub(&quot;ai&quot;, &quot;ai_attid&quot;, .x,
-                     fixed = TRUE)) %&gt;% 
-  names()
-```
-
-```
-## [1] &quot;ai_attid_select&quot;  &quot;ai_attid_sent&quot;    &quot;ai_attid_acc&quot;     &quot;ai_attid_complex&quot;
-## [5] &quot;ai_attid_threat&quot;
-```
 
 ---
 

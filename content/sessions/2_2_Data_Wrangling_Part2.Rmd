@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Data Wrangling - Part 2"
 author: "Veronika Batzdorfer"
-date: "2025-05-24"
+date: "2025-11-07"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -36,6 +36,7 @@ stackoverflow_survey_single_response$country <- as.factor(stackoverflow_survey_s
 typeof(stackoverflow_survey_single_response$country)
 
 ```
+
 
 ---
 
@@ -387,6 +388,166 @@ tuesdata_ai_threat %>%
 
 ---
 
+---
+
+## Summary statistics
+
+To make sense of quantitative data we can reduce their information to unique values.
+
+--
+
+.center[
+~ 
+
+**That's a simple definition of summary statistics**
+
+~]
+
+--
+
+As such, we can use summarizing functions of
+- location (e.g., the mean),
+- spread (e.g., standard deviation),
+- the shape of the distribution (e.g., skewness), and
+- relations between variables (e.g., correlation coefficients)
+
+---
+
+## Summary statistics: `summary()`
+
+A quick and easy way to check some summary statistics for your data set is the `base R` function `summary()` which can be applied to individual variables...
+
+```{r summary}
+summary(stackoverflow_survey_single_response$ai_acc)
+```
+
+as well as whole data frames:
+```{r summary-many, eval = F}
+summary(stackoverflow_survey_single_response)
+```
+
+.right[`r emo::ji("left_arrow_curving_right")`] 
+
+---
+
+class: middle
+.small[
+```{r ref.label = "summary-many", echo = F}
+
+```
+]
+
+---
+
+## Summary statistics with the `datawizard` package `r emo::ji("mage")`
+
+The [`datawizard` package](https://easystats.github.io/datawizard/) provides a function for summary statistics. 
+
+```{r datawiz-descr, eval=FALSE}
+library(datawizard)
+
+stackoverflow_survey_single_response %>%
+  select(where(is.numeric)) %>%
+  describe_distribution(quartiles = TRUE)
+```
+
+.right[`r emo::ji("left_arrow_curving_right")`]
+
+---
+
+class: middle
+.small[
+```{r ref.label = "datawiz-descr", echo = F, message = F, warning = F}
+
+```
+]
+
+---
+
+## Summary statistics with `dplyr`
+
+`dplyr` provides a helpful function for creating summary statistics: `summarize()`
+
+`summarize()` is a [vectorized](https://win-vector.com/2019/01/03/what-does-it-mean-to-write-vectorized-code-in-r/) function that can be used to create summary statistics for variables using functions like...
+
+- `mean()`
+- `sd()`
+- `min()`
+- `max()`
+
+- etc.
+
+---
+
+## Summary statistics with `dplyr`
+
+While creating summary statistics using `summarize()` from `dplyr()` requires writing more code, it is the most flexible option. Another nice benefit of `summarize()` is that it produces a .highlight[`tibble`] which can be used for further analyses or for creating plots or tables.
+---
+
+
+
+## Excercises
+
+
+- A. Load the dataset (gapminder) from the library `gapminder` and determine the mean life expectancy in Asia.
+
+- B. Determine the mean and median GDP per capita in Europe.
+
+- C. Determine the mean life expectancy in 2007 for South America.
+
+- D. Determine the top 5 countries in 2007 with the highest GDP per capita among those with life expectancy over 75.
+
+
+
+---
+
+## Solutions
+
+
+```{r}
+library(gapminder)
+
+#Mean life expect. Asia
+gapminder %>%
+  filter(continent == "Asia") %>%
+  summarize(mean_lifeExp = mean(lifeExp))
+
+
+
+# Mean, Median GDP Europe
+gapminder %>%
+  filter(continent == "Europe") %>%
+  summarize(mean_gdp = mean(gdpPercap),
+            median_gdp = median(gdpPercap))
+
+
+# Mean life expect. in 2007 S.America
+gapminder %>%
+  filter(continent == "Americas", year == 2007) %>%
+  summarize(mean_lifeExp = mean(lifeExp))
+
+
+```
+
+
+---
+
+## Solutions
+
+```{r}
+
+# Top 5 coutnries
+gapminder %>%
+  filter(year == 2007, lifeExp > 65) %>%
+  arrange(desc(gdpPercap))
+
+
+```
+
+
+
+---
+
 ## Outlook: Working with strings in `R` 
 
 As stated before, we won't be able to cover the specifics of working with strings in `R` in this course. However, it may be good to know that the `tidyverse` package [`stringr`](https://stringr.tidyverse.org/index.html) offers a collection of convenient functions for working with strings.
@@ -397,11 +558,6 @@ knitr::include_graphics("https://stringr.tidyverse.org/logo.png")
 
 The `stringr` package provides a good [introduction vignette](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html), the book *R for Data Science* has a whole section on [strings with `stringr`](https://r4ds.had.co.nz/strings.html).
 
----
-
-## Sidenote: Regular expressions
-
-If you want (or have) to work with [regular expressions](https://en.wikipedia.org/wiki/Regular_expression), there are several packages that can facilitate this process by allowing you to create regular expressions in in a (more) human-readable: e.g., [`rex`](https://github.com/r-lib/rex), [`RVerbalExpressions `](https://rverbalexpressions.netlify.app/index.html), or [`rebus` package](https://github.com/richierocks/rebus) which allows you to create regular expressions in R in a human-readable way. 
 
 ---
 
@@ -422,48 +578,6 @@ knitr::include_graphics("https://lubridate.tidyverse.org/logo.png")
 
 *Note*: If you work with time series data, it is also worth checking out the [`tsibble` package](https://tsibble.tidyverts.org/) for your wrangling tasks.
 
----
-
-## Dates
-
-```{r warning=FALSE, message=FALSE}
-library(lubridate)
-library(nycflights13)
-
-
-flights_df <- flights  %>% 
-  dplyr::select(year, month, day, hour, minute, dep_delay) %>% 
-  dplyr::mutate(depart_time = make_datetime(year, month, day, hour, minute))
-
-flights_df %>% head()
-
-```
-
-
----
-
-
-## Rounding
-
-```{r warning=FALSE, message=FALSE}
-library(dplyr)
-
-flights_df %>% 
-  dplyr::count(week = floor_date(depart_time, "week")) %>% 
-  ggplot(aes(week,n))+
-  geom_line()
-
-#--filter by delay: dep_delay-------------------
-
-
- flights_df %>%
-  mutate(
-    delay_type = ifelse(dep_delay < -10, "early", "delay"), # Categorize delay
-    week = floor_date(depart_time, "week")                  # Extract week
-  ) %>%
-  count(week, delay_type) 
-
-```
 
 
 
