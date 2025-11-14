@@ -32,7 +32,7 @@ By the end of the course participants should be:
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
 | **Friday** | **15:00 - 16:00**  | **[Data Workflows & Github](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/aa874fa29b78263c80af38a82c16e6235776514b/slides/1_3_Appendix_Setup_Workflow_Help.html)**     |
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
-| **Friday** | **16:10 - 17:00**  | **[Tidy Tuesday -- Group Work ]()**     |
+| **Friday** | **16:10 - 17:00**  | **Tidy Tuesday -- Group Work **     |
 
 ---
 
@@ -45,7 +45,7 @@ By the end of the course participants should be:
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
 | **Friday** | **13:00 - 14:45** | **[Reproducible Reporting with R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/2e7fcea4be42f0e941eabae26ea1ac66116179a4/slides/5_1_Reporting_w_Rmarkdown.html)**      |
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
-| **Friday** | **15:00 - 16:00**  | **[Group exploration]()**     |
+| **Friday** | **15:00 - 16:00**  | **Group exploration**     |
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
 | **Friday** | **16:10 - 17:00**  | **[Group pitches & Wrap-up]()**     |
 
