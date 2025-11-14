@@ -44,6 +44,7 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 
 library(palmerpenguins)
 library(tidyverse)
+library(ggbeeswarm)
 
 df <- penguins %>% drop_na()
 
@@ -794,7 +795,7 @@ vis_miss(df [,1:5])
 
 
 ---
-## 
+## Exploratory Analyses
 
 ```{r warning=FALSE, message=FALSE}
 # --- STEP 1: Foundation ---
@@ -805,12 +806,12 @@ explanatory_plot <- df %>%
   # --- STEP 2: Add uncertainty ---
   geom_smooth(
     method = "lm", 
-    se = TRUE,  # Show confidence bands
-    alpha = 0.1,  # Transparent bands
+    se = TRUE,  # confidence bands
+    alpha = 0.1,  # Transparency
     size = 1
   ) +
   
-  # --- STEP 3: Show raw data distribution ---
+  # --- STEP 3: Raw data distribution ---
   geom_beeswarm(
     aes(size = body_mass_g),  # Encode third dimension
     alpha = 0.6,
@@ -840,7 +841,7 @@ explanatory_plot <- df %>%
 ```{r polishplot}
 # --- STEP 5: Polish scales ---
 explanatory_plot <- explanatory_plot +
-  # Professional color palette (colorblind safe)
+  # color palette (colorblind safe)
   scale_color_manual(
     values = c("Adelie" = "#0072B2", "Chinstrap" = "#E79F00", "Gentoo" = "#009E73")
   ) +
@@ -875,7 +876,7 @@ explanatory_plot <- explanatory_plot +
 
 ---
 
-```{r  out.width = "70%"}
+```{r  out.width = "50%"}
 explanatory_plot
 ```
 
@@ -906,13 +907,12 @@ library(ggrepel)
   theme(legend.position = "none") +
   labs(title = "Species Body Mass with Statistical Comparisons")
 
-
 ```
 
 ---
 ## Which species differ and how much?
 
-```{r  out.width = "70%"}
+```{r  out.width = "50%"}
 difference_plot
 ```
 
@@ -930,7 +930,8 @@ difference_plot
 
 ```{r island}
 # SOLUTION
-ggplot(df, aes(x = island, y = bill_length_mm, fill = island)) +
+
+violin_plot <- ggplot(df, aes(x = island, y = bill_length_mm, fill = island)) +
   geom_violin(alpha = 0.5) +
   geom_boxplot(width = 0.1, fill = "white") +
   ggsignif::geom_signif(
@@ -948,12 +949,12 @@ ggplot(df, aes(x = island, y = bill_length_mm, fill = island)) +
   theme(legend.position = "none")
 ```
 
-]
+---
 
-.pull-right[
-```{r ref.label = "island", echo = FALSE, out.width = "7%"}
+```{r out.width = "50%"}
+violin_plot
 ```
-]
+
 
 ---
 
@@ -979,7 +980,7 @@ top_5 <- df %>%
 # Calculate ref
 mean_bill <- mean(df$bill_length_mm)
 
-ggplot(df, aes(x = bill_length_mm,
+scatterplot <- ggplot(df, aes(x = bill_length_mm,
                y = flipper_length_mm,
                color = species)) +
   geom_point(alpha = 0.6, size = 2) +
@@ -1010,12 +1011,12 @@ ggplot(df, aes(x = bill_length_mm,
   )
 ```
 
-]
+---
 
-.pull-right[
-```{r ref.label = "groupcomp", echo = FALSE, , out.width = "30%"}
+
+```{r out.width = "60%"}
+scatterplot
 ```
-]
 
 
 ---
