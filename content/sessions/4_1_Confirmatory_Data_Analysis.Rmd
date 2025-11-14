@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R "
 subtitle: "Confirmatory Data Analysis"
 author: "Veronika Batzdorfer"
-date: "2025-06-23"
+date: "2025-11-21"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -39,135 +39,13 @@ layout: true
 ]
 
 ```{r load-data, echo=FALSE}
-library(tidyverse)
-library(woRkshoptools)
 
-stackoverflow_survey_single_response <- read_csv("./data/stackoverflow_survey_single_response.csv")
+library(palmerpenguins)
 
-df <- stackoverflow_survey_single_response %>%
-  rename(
-    main_branch = main_branch,
-    age_group = age,
-    remote_work = remote_work,
-    education_level = ed_level,
-    years_coding = years_code,
-    years_pro_coding = years_code_pro,
-    purchase_influence = purchase_influence,
-    build_vs_buy = buildvs_buy,
-    visit_frequency = so_visit_freq,
-    has_account = so_account,
-    participation_frequency = so_part_freq,
-    community_belief = so_comm,
-    ai_usage = ai_select,
-    ai_sentiment = ai_sent,
-    ai_complexity = ai_complex,
-    survey_ease = survey_ease,
-    yearly_compensation = converted_comp_yearly,
-  )
-
-df <- df %>% 
-  mutate(ai_trust = rowMeans(across(ai_sentiment:ai_acc, ~as.numeric(.x))))
+penguins_clean <- penguins %>% drop_na()
 
 ```
 
-
-```{r preoproce, echo=FALSE, eval=FALSE}
-
-df <- df %>%
-  mutate(
-    main_branch = case_when(
-      main_branch == 1 ~ "Developer by profession",
-      main_branch == 2 ~ "Learning to code",
-      main_branch == 3 ~ "Not primarily a developer",
-      main_branch == 4 ~ "Hobbyist",
-      main_branch == 5 ~ "Former developer",
-      TRUE ~ as.character(main_branch)
-    )
-  )
-
-# Recode education_level
-df <- df %>%
-  mutate(
-    education_level = case_when(
-      education_level == 1 ~ "Associate degree",
-      education_level == 2 ~ "Bachelor’s degree",
-      education_level == 3 ~ "Master’s degree",
-      education_level == 4 ~ "Primary/elementary school",
-      education_level == 5 ~ "Professional degree",
-      education_level == 6 ~ "Secondary school",
-      education_level == 7 ~ "Some college",
-      education_level == 8 ~ "Other",
-      TRUE ~ as.character(education_level)
-    )
-  )
-
-# Recode so_visit_freq
-df <- df %>%
-  mutate(
-    visit_frequency = case_when(
-      visit_frequency == 1 ~ "A few times per month or weekly",
-      visit_frequency == 2 ~ "A few times per week",
-      visit_frequency == 3 ~ "Daily or almost daily",
-      visit_frequency == 4 ~ "Less than once per month or monthly",
-      visit_frequency == 5 ~ "Multiple times per day",
-      TRUE ~ as.character(visit_frequency)
-    )
-  )
-
-
-# Recode ai_threat
-df <- df %>%
-  mutate(
-    ai_threat = case_when(
-      ai_threat == 1 ~ "I'm not sure",
-      ai_threat == 2 ~ "No",
-      ai_threat == 3 ~ "Yes",
-      TRUE ~ as.character(ai_threat)
-    )
-  )
-
-# Recode ai_complex
-df <- df %>%
-  mutate(
-    ai_complexity = case_when(
-      ai_complexity == 1 ~ "Bad at complex tasks",
-      ai_complexity == 2 ~ "Good",
-      ai_complexity == 3 ~ "Neither ",
-      ai_complexity == 4 ~ "Very poor at complex tasks",
-      ai_complexity == 5 ~ "Very well at complex tasks",
-      TRUE ~ as.character(ai_complexity)
-    )
-  )
-
-#recode ai_acc
-
-#ai_acc,1,Highly distrust
-#ai_acc,2,Highly trust
-#ai_acc,3,Neither trust nor distrust
-#ai_acc,4,Somewhat distrust
-#ai_acc,5,Somewhat trust
-
-df <- df %>%
-  mutate(ai_acc = recode(ai_acc,
-                                `1` = 1,  # Highly distrust
-                                `4` = 2,  # Somewhat distrust
-                                `3` = 3,  # Neutral
-                                `5` = 4,  # Somewhat trust
-                                `2` = 5)) # Highly trust
-
-
-df <- df %>% 
-  filter(!is.na(ai_threat))
-
-
-df$ai_threat <- as.factor(df$ai_threat)
-df$age_group <- as.factor(df$age_group)
-
-df <- df %>%
-  mutate(ai_threat = ifelse(ai_threat %in% c("Yes", "I'm not sure"), 1, 0))
-
-
-```
 
 
 ---
@@ -177,23 +55,18 @@ df <- df %>%
 - We learned how to import/ export data
 - We learned how to wrangle data, subsets, create new variables, recode, merge, pivot
 
-
 ---
 ## Recap Distribution
 
 ```{r fig.width= 5, fig.height=4}
 #plot first variable
-hist(df$ai_acc, 
+hist(penguins_clean$bill_length_mm, 
      col=rgb(0,0,1,0.25), 
           breaks=10,
-     xlab='Trust in AI accuracy (blue) and complexity (red) ',
-     main='Distribution of AI Metrics'
+     xlab='Bill length [mm] ',
+     main='Distribution'
 ) 
-#add second variable
-hist(df$ai_complexity, 
-     col=rgb(1,0,0,0.25), 
-     breaks=10,
-     add=T)
+
 ```
 
 
@@ -203,8 +76,8 @@ hist(df$ai_complexity,
 ```{r}
 library(modelsummary)
 
-df.s <- df %>% 
-  dplyr::select(ai_complexity, ai_acc, ai_threat, visit_frequency) 
+df.s <- penguins_clean %>% 
+  dplyr::select(bill_length_mm, body_mass_g, flipper_length_mm) 
 
 datasummary_skim(df.s, output = 'flextable')
 
@@ -212,17 +85,58 @@ datasummary_skim(df.s, output = 'flextable')
 
 ---
 
-## Bivariate correlations
+## Visualize Bivariate Relationships
 
 ```{r fig.width= 6, fig.height=4}
-# Subset and drop missings
-dt.com <- df %>% 
-  dplyr::select(ai_complexity, ai_acc, ai_threat, ai_sentiment,years_coding) %>% 
-  drop_na()
+library(ggplot2)
 
-#  corrplot
-library(corrplot)
-corrplot.mixed(cor(dt.com), lower.col = "black", number.cex = .7, insig='blank')
+# Scatter pl. with trend line----
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  labs(title = "Body Mass by Flipper Length",
+       subtitle = "Clear positive linear relationship",
+       x = "Flipper Length (mm)",
+       y = "Body Mass (g)")
+```
+
+facet_wrap() can show separate relationships by species!
+
+
+---
+
+## Simple Linear Regression: Our First Model
+
+
+```{r}
+
+# Estimate the model
+penguin_lm_simple <- lm(
+  body_mass_g ~ flipper_length_mm,
+  data = penguins_clean
+)
+
+# View basic output
+penguin_lm_simple
+```
+---
+
+## Model Summary: What Does It Mean?
+
+```{r}
+
+summary(penguin_lm_simple)
+```
+
+
+---
+
+## Interpreting Coefficients with `parameters`
+
+```{r}
+library(parameters)
+
+model_parameters(penguin_lm_simple)
 ```
 
 
@@ -297,6 +211,22 @@ y ~ .
 
 ---
 
+## Multiple Regression: Adding More Predictors
+
+```{r}
+penguin_lm_multi <- lm(
+  body_mass_g ~ flipper_length_mm + bill_length_mm + bill_depth_mm + species,
+  data = penguins_clean
+)
+
+# Compare models
+anova(penguin_lm_simple, penguin_lm_multi)
+```
+
+Why multiple?
+
+---
+
 ## Interaction effects with `*` and `:`
 
 We can also easily add interaction effects to a model. As this is the same as multiplying predictor variables, we also use the <span style="color:orange">**`*`**</span> sign for that.
@@ -311,6 +241,24 @@ The code above creates a model formula that includes both the <span style="backg
 y ~ x1 + x2 + x1:x2
 ```
 
+
+---
+
+## Interaction Effects with Penguins
+Does the effect of flipper length on body mass differ by species?
+
+
+```{r}
+penguin_lm_interact <- lm(
+  body_mass_g ~ flipper_length_mm * species,
+  data = penguins_clean
+)
+
+model_parameters(penguin_lm_interact)
+```
+
+Interpretation: The flipper_length_mm:speciesChinstrap interaction means the slope is 8.9g/mm less steep for Chinstraps than Adelie.
+Visualize interactions to aid interpretation!
 
 ---
 
@@ -375,9 +323,17 @@ What if our data are <span style="background-color: orange">*not normally distri
 
 ```{r swt, eval=FALSE}
 
-shapiro.test(df_filtered$age_group)
+# Shapiro-Wilk test on residuals
+shapiro.test(residuals(penguin_lm_multi))
+
+# Histogram of residuals
+hist(residuals(penguin_lm_multi), 
+     main = "Distribution of Residuals",
+     xlab = "Residuals")
 
 ```
+
+**Note**: With large samples, even minor deviations become "significant". Focus on visual diagnostics and practical significance.
 
 ---
 
@@ -493,7 +449,8 @@ plot(simple_linear_model)
 ---
 
 ## Assumption checks
-easystats provides some nice features for inspecting model fit. Here's a simple check for normality of the residuals. It is a combination of using a function from the performance package and then using see to plot it.
+Check assumptions systematically: linearity, normality, homoscedasticity, independence.
+
 
 ```{r eval=FALSE}
 library(performance)
@@ -502,18 +459,18 @@ check_normality(linear_model) %>%
   plot()
 ```
 
-QQ Plot
-```{r eval=FALSE}
-check_normality(simple_linear_model) %>% 
-  plot(type = "qq")
-```
-Heteroscedascity
 
-```{r eval=FALSE}
-check_heteroscedasticity(
-  linear_model
-) %>% 
-  plot()
+
+```{r }
+par(mfrow = c(1, 2))
+
+# Residuals vs Fitted
+plot(penguin_lm_multi, which = 1, 
+     main = "Linearity & Homoscedasticity")
+
+# Normal Q-Q plot
+plot(penguin_lm_multi, which = 2, 
+     main = "Normality of Residuals")
 
 ```
 
@@ -527,33 +484,91 @@ check_model(simple_linear_model)
 
 ---
 
+## Multicollinearity: The VIF Check
+
+When predictors correlate highly, coefficient estimates become unstable. Check Variance Inflation Factor (VIF):
+
+```{r}
+library(car)
+
+vif(penguin_lm_multi)
+```
+
+**Rule of thumb**: VIF > 5 indicates problematic multicollinearity. Here, bill length and depth are somewhat correlated but acceptable.
+
+**Solution**: Remove one predictor, combine them, or use regularization.
+
+---
+
 ## Checking regression assumptions
 
 As in the case of ANOVA, check regression assumptions. There are plenty of good tutorials online (such as [this blog post by Ian Ruginski](https://www.ianruginski.com/post/regressionassumptions/) or [this chapter](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/testing-regression-assumptions.html) in the online book [*R for Survey Analysis*](https://bookdown.org/jimr1603/Intermediate_R_-_R_for_Survey_Analysis/)).
 
 
 ---
-## Why robust?
 
-You can make your linear regression provide **robust** or clustered **standard errors**. One convenient way is the **`fixest`** package. The syntax is very similar to lm. But we specify fixed effects slightly differently by using the | symbol.
-
-Alternatively, we can use the <span style="background-color: orange">lm_robust()</span> function from the `estimatr` package.
-
-
----
-## Robust Standard Errors
+## Making Predictions from Your Model
+Models are useful for prediction! Let's predict body mass for a new penguin:
 
 ```{r}
-library(fixest)
+# New observation
+new_penguin <- data.frame(
+  flipper_length_mm = 200,
+  bill_length_mm = 45,
+  bill_depth_mm = 15,
+  species = "Gentoo"
+)
 
-model.lm.1.robust<-feols(ai_trust ~ main_branch + participation_frequency + factor(age_group) + 
-                           ai_threat + ai_sentiment | country, # fixed effects per country
-                         vcov = "hetero", # heteroskedastic robust SEs
-                         data = df_filtered)
+# Point prediction
+predict(penguin_lm_multi, newdata = new_penguin)
 
-summary(model.lm.1.robust)
+# With confidence interval (uncertainty in estimate)
+predict(penguin_lm_multi, newdata = new_penguin, 
+        interval = "confidence")
 
+# With prediction interval (uncertainty for new observation)
+predict(penguin_lm_multi, newdata = new_penguin, 
+        interval = "prediction")
 ```
+
+---
+
+## Standardized Effect Sizes (Beta Coefficients)
+To compare effect magnitudes across variables with different scales, use standardized coefficients:
+
+
+```{r}
+library(lm.beta)
+
+# Standardize coefficients
+penguin_lm_beta <- lm.beta(penguin_lm_multi)
+
+# Extract standardized coefficients
+coef(penguin_lm_beta)["flipper_length_mm"]
+coef(penguin_lm_beta)["bill_length_mm"]
+```
+
+**Note**: A 1 SD increase in flipper length corresponds to a 0.64 SD increase in body mass – the strongest predictor!
+
+---
+## Categorical Predictors: Factor Variables
+
+`R` automatically handles categorical variables (factors) by creating dummy variables. Inspect the design matrix:
+
+```{r}
+# See how species is coded
+contrasts(penguins_clean$species)
+
+# View model matrix
+head(model.matrix(penguin_lm_multi))
+```
+
+- Reference level
+- Other levels
+
+
+
+
 
 
 ---
@@ -568,37 +583,24 @@ There are a multitude of other estimators/link functions, so-called **family obj
 
 ---
 
-## Generalized linear regression
+## GLM with Penguins: Logistic Regression Example
 
-Let's look at the the example of logistic regression.
+Let's predict species (binary: Adelie vs. not) from measurements – a classification problem.
 
 ```{r log-reg}
-#keep relevant predictors and complete cases
-df_model <- df %>%
-  filter(!is.na(r_used)) %>%
-  select(
-    r_used,
-    main_branch,
-    age_group,
-    education_level,
-    participation_frequency,
-    ai_sentiment,
-    ai_threat,
-    ai_complexity,
-    years_coding,
-    community_belief
-  ) %>%
-  drop_na()
+# Binary outcome
+penguins_binary <- penguins_clean %>%
+  mutate(is_adelie = ifelse(species == "Adelie", 1, 0))
 
-# Fit the logistic regression model
-model_r_used <- glm(
-  r_used ~ .,
-  data = df_model,
-  family = binomial()
+# Logistic regression
+penguin_glm <- glm(
+  is_adelie ~ flipper_length_mm + bill_length_mm + bill_depth_mm,
+  family = binomial(),
+  data = penguins_binary
 )
 
-# View summary
-summary(model_r_used)
+# Odds ratios
+exp(coef(penguin_glm))
 
 ```
 
@@ -625,23 +627,26 @@ The [`performance` package](https://easystats.github.io/performance/) that is th
 
 ---
 
-## Model selection
+## Model Comparison with AIC
 
-Apply stepwise AIC to remove/ add predictors.
+Compare nested models using Akaike Information Criterion – balances fit and complexity.
 
 ```{r probit-reg, eval = FALSE}
-fit_log1 <- glm(r_used ~ main_branch,
-                family = binomial, data = df_model)
+# Simple model
+model1 <- lm(body_mass_g ~ flipper_length_mm, 
+             data = penguins_clean)
 
-fit_log2 <- glm(r_used ~ main_branch +
-                  age_group +
-                  ai_sentiment,
-                  family = binomial, data = df_model)
+# Complex model
+model2 <- lm(body_mass_g ~ flipper_length_mm + bill_length_mm + species, 
+             data = penguins_clean)
 
-anova(fit_log1, fit_log2, test = "Chisq")
+# Compare
+AIC(model1, model2)
+
 
 ```
 
+Lower AIC = better model. The complex model is preferred here.
 .right[`r emo::ji("left_arrow_curving_right")`]
 
 ---
@@ -658,12 +663,12 @@ class:middle
 Start with a simple model and stepwise remove possible predictors
 
 ```{r stepwise}
-fit_log_step = step(glm(r_used ~ main_branch +
-                          age_group +
-                          ai_complexity +
-                          ai_threat, 
-                          family = binomial, data = df_model, trace = 0))
-fit_log_step
+# Stepwise selection
+step_model <- step(model1, scope = ~ flipper_length_mm + 
+                     bill_length_mm + bill_depth_mm + species,
+                   trace = FALSE)
+summary(step_model)
+
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -757,7 +762,7 @@ As we have seen in the session on *Exploratory Data Analysis*, there are differe
 library(stargazer)
 
 stargazer(
-  simple_linear_model, 
+  penguin_lm_multi, 
   type = "text",        # For console output; use "html" or "latex" for other formats
   title = "Regression Results",
   dep.var.labels = c("AI Trust"),
@@ -788,20 +793,44 @@ class: center, middle
 ## Tidy models with `broom`
 
 The [`broom`](https://broom.tidymodels.org/) package provides only 3 but very powerful main functions:
-- `tidy()`: creates a `tibble` from your model
+- `tidy()`: creates a `tibble` from your model (coefficients)
 - `glance()`: information about your model as `tibble` ('model fit')
-- `augment()`: adds information, e.g., individual fitted values to your data
+- `augment()`: adds observ. information, e.g., individual fitted values to your data
 
 *Note*: With `broom` you can also create a standardized output of other types of models, such as Latent Class Analysis (LCA) (with the package [`poLCA`](https://cran.r-project.org/web/packages/poLCA/index.html)). 
+
+---
+
+## Conflicts
+
+
+```{r}
+# See which packages conflict
+conflicts(detail = TRUE)
+
+# Look specifically for tidy conflicts
+conflicts(detail = TRUE)$`package:broom`
+
+```
+
+Always load broom after packages like tidyverse to avoid conflicts
 
 ---
 
 ## `tidy()`
 
 ```{r tidy}
-library(broom)
+# Load in THIS order
+library(tidyverse)  
+library(palmerpenguins)
+library(broom)      
+library(parameters)
 
-tidy(simple_linear_model)
+
+
+tidy_penguin <- tidy(penguin_lm_multi)
+print(tidy_penguin)
+
 ```
 
 ---
@@ -809,7 +838,10 @@ tidy(simple_linear_model)
 ## `glance()`
 
 ```{r glance}
-glance(simple_linear_model)
+
+# glance() - model fit
+glance(penguin_lm_multi)
+
 ```
 
 ---
@@ -817,8 +849,45 @@ glance(simple_linear_model)
 ## `augment()`
 
 ```{r augment}
-augment(simple_linear_model)
+
+# augment() - diagnostics
+augment_penguin <- augment(penguin_lm_multi)
+head(augment_penguin)
+
 ```
+
+---
+
+## From Model to Diagnostics
+
+Combine all three `broom` functions
+
+```{r}
+# 1. Get coefficients (tidy)
+coef_table <- tidy(penguin_lm_multi, conf.int = TRUE)
+
+# 2. Get model fit (glance)
+fit_stats <- glance(penguin_lm_multi)
+
+# 3. Get diagnostics (augment)
+diag_data <- augment(penguin_lm_multi) %>%
+  mutate(
+    outlier = abs(.std.resid) > 2,
+    species = penguins_clean$species  # Add back categorical variable
+  )
+
+# 4. Visualize residuals by species
+library(ggplot2)
+ggplot(diag_data, aes(x = species, y = .resid, fill = outlier)) +
+  geom_boxplot() +
+  labs(title = "Residuals by Species",
+       subtitle = "Outliers highlighted in red",
+       x = "Species",
+       y = "Residuals") +
+  theme_minimal()
+```
+
+
 
 ---
 
