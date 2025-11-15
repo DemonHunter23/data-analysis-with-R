@@ -39,7 +39,7 @@ By the end of the course participants should be:
 ### Day 2: [21-11]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1b070518acefd90c06c79ddf4ca58b7822fe9529/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses]()**   |
+| **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1b070518acefd90c06c79ddf4ca58b7822fe9529/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/09522ad64ade5f618a15a3be53d305b7463a5a25/slides/4_1_Confirmatory_Data_Analysis.html)**   |
 | *Friday* | *10:45 - 11:00*  | *Break*                             |
 | **Friday** | **11:00 - 12:00** | **[Large Language Models]()**            |
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
