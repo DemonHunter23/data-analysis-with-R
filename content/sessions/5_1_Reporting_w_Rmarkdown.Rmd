@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Reporting with R Markdown"
 author: "Veronika Batzdorfer"
-date: "2025-06-23"
+date: "2025-11-21"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
