@@ -10,7 +10,7 @@ editor_options:
 
 layout: true
 
-```{r child = "./content/config/sessions_setup.Rmd"}
+```{r child = "./content/config/sessions_setup.Rmd", warning=FALSE}
 ```
 
 ---
@@ -19,7 +19,7 @@ layout: true
 
 create a variety of outputs in different formats: `R Markdown`
 
-```{r workflow-img, echo=FALSE, out.width="60%"}
+```{r workflow-img, echo=FALSE, out.width="60%", warning=FALSE}
 knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df81a3e3853f54d3c76ad6efc/32d37/diagrams/data-science.png")
 ```
 
