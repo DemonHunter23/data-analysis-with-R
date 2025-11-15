@@ -72,12 +72,12 @@ hist(penguins_clean$bill_length_mm,
 
 ---
 ## Descriptive Statistics
-
+### Select continuous variables for summary
 ```{r}
 library(modelsummary)
 
 df.s <- penguins_clean %>% 
-  dplyr::select(bill_length_mm, body_mass_g, flipper_length_mm) 
+  select(bill_length_mm, body_mass_g, flipper_length_mm) 
  
 datasummary_skim(df.s, output = 'flextable')
 
@@ -100,7 +100,7 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g)) +
        y = "Body Mass (g)")
 ```
 
-facet_wrap() can show separate relationships by species!
+Tip: `facet_wrap()` can show separate relationships by group!
 
 
 ---
@@ -109,19 +109,18 @@ facet_wrap() can show separate relationships by species!
 
 
 ```{r}
-
 # Estimate the model
 penguin_lm_simple <- lm(
   body_mass_g ~ flipper_length_mm,
   data = penguins_clean
 )
 
-# View basic output
+# View coefficients
 penguin_lm_simple
 ```
 ---
 
-## Model Summary: What Does It Mean?
+## Interpreting Model Output: What Does It Mean?
 
 ```{r}
 
@@ -142,9 +141,8 @@ model_parameters(penguin_lm_simple)
 
 ---
 
-## `R` is straightforward and literate
+## Formula Syntax in `R` 
 
-`R` combines the best of two worlds: It is straightforward to write formulas 
 
 ```{r eval = FALSE}
 y ~ x1 + x2 + x3
@@ -215,11 +213,14 @@ y ~ .
 
 ```{r}
 penguin_lm_multi <- lm(
-  body_mass_g ~ flipper_length_mm + bill_length_mm + bill_depth_mm + species,
+  body_mass_g ~ flipper_length_mm +
+    bill_length_mm +
+    bill_depth_mm +
+    species,
   data = penguins_clean
 )
 
-# Compare models
+# Compare with simple model
 anova(penguin_lm_simple, penguin_lm_multi)
 ```
 
@@ -254,10 +255,15 @@ penguin_lm_interact <- lm(
   data = penguins_clean
 )
 
+```
+---
+## Interaction Effects
+```{r}
 model_parameters(penguin_lm_interact)
 ```
 
-Interpretation: The flipper_length_mm:speciesChinstrap interaction means the slope is 8.9g/mm less steep for Chinstraps than Adelie.
+
+**Interpretation**: The flipper_length_mm:speciesChinstrap interaction means the slope is 8.9g/mm less steep for Chinstraps vs Adelie.
 Visualize interactions to aid interpretation!
 
 ---
@@ -294,6 +300,7 @@ The previous descriptions mainly refer to formulas used in regression models in 
 ---
 
 ## Testing group differences in the distribution
+### T-Test: Two Groups
 
 A common method for analyzing group differences are t-tests. You can use the two-sample <span style="background-color: yellow">`t.test()`</span> function:
 
@@ -307,16 +314,14 @@ t_test_sex <- t.test(
   alternative = "two.sided"   # Two-tailed test 
 )
 
+```
 
+---
+## T-Test Results
+
+```{r}
 print(t_test_sex)
 
-# 4. Extract key statistics 
-list(
-  t_statistic = round(t_test_sex$statistic, 2),
-  df = round(t_test_sex$parameter, 1),
-  p_value = t_test_sex$p.value,
-  mean_diff = round(t_test_sex$estimate[1] - t_test_sex$estimate[2])
-)
 ```
 
 .small[
@@ -326,8 +331,12 @@ list(
 ---
 ## Visualize T-Test
 
+.pull-left[
+
 ```{r}
-ggplot(penguins_clean, aes(x = sex, y = body_mass_g, fill = sex)) +
+t_test <- ggplot(penguins_clean,
+                 aes(x = sex, y = body_mass_g,
+                     fill = sex)) +
   geom_boxplot(alpha = 0.7, show.legend = FALSE) +
   geom_jitter(width = 0.2, alpha = 0.5, show.legend = FALSE) +
   labs(
@@ -338,71 +347,26 @@ ggplot(penguins_clean, aes(x = sex, y = body_mass_g, fill = sex)) +
   ) +
   scale_fill_manual(values = c(female = "darkorange", male = "steelblue"))
 ```
+]
 
-
----
-
-## Test of normality
-
-What if our data are <span style="background-color: orange">*not normally distributed*</span> in the first place, violating one of the basic assumptions of performing t-tests? To check this: [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test of normality.
-
-```{r swt, eval=FALSE}
-
-# Shapiro-Wilk test on residuals
-shapiro.test(residuals(penguin_lm_multi))
-
-# Histogram of residuals
-hist(residuals(penguin_lm_multi), 
-     main = "Distribution of Residuals",
-     xlab = "Residuals")
-
-```
-
-**Note**: With large samples, even minor deviations become "significant". Focus on visual diagnostics and practical significance.
-
----
-
-## Wilcoxon/Mann-Whitney test
-
-If the data are not normally distributed, the [Wilcoxon/Mann-Whitney](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test) test can be a suitable alternative.
-
-```{r wilcox}
-# flipper length between 2 species----
-
-# Filter only 2 species for a valid two-group  test
-peng_two <- penguins %>% 
-  filter(species %in% c("Adelie", "Gentoo"))
-
-# Run the Wilcoxon rank-sum test (non-parametric alternative to t-test)
-wilcox.test(flipper_length_mm ~ species, data = peng_two)
-
-```
-
+.pull-right[
 ```{r}
-#pairwise comparison between all species
-
-pairwise.wilcox.test(
-  x = penguins$flipper_length_mm,
-  g = penguins$species,
-  p.adjust.method = "BH"
-)
+t_test
 ```
-
+]
 
 ---
 
-## Testing multiple groups with an ANOVA
+## Testing multiple groups: ANOVA
 
-There are situations in which we want to test differences across multiple groups. The classic method to use for this is an analysis of variance (ANOVA) and its many variants (ANCOVA, MANOVA, etc.). 
+Research question: Do species differ in flipper length?
 
 ```{r anova}
-#One-way anova
-# do species differ in flipper length
 
 peng_clean <- penguins %>% 
   filter(!is.na(flipper_length_mm))
 
-# One-way ANOVA
+# 1-way ANOVA
 fit <- aov(flipper_length_mm ~ species, data = peng_clean)
 summary(fit)
 
@@ -410,11 +374,13 @@ summary(fit)
 
 ---
 
-
 ## Anova visualization
-
+.pull-left[
 ```{r}
-ggplot(peng_clean, aes(x = species, y = flipper_length_mm, fill = species)) +
+anova_plot <- ggplot(peng_clean,
+                     aes(x = species,
+                         y = flipper_length_mm,
+                         fill = species)) +
   geom_boxplot(alpha = 0.7) +
   labs(title = "Flipper Length by Species",
        y = "Flipper Length (mm)",
@@ -423,19 +389,29 @@ ggplot(peng_clean, aes(x = species, y = flipper_length_mm, fill = species)) +
   theme(legend.position = "none")
 ```
 
+]
+
+.pull-right[
+```{r}
+anova_plot
+```
+]
 
 
 ---
 
-## Two-way ANOVA: Species + Sex effects on body mass
+## Two-way ANOVA
 
+Species + Sex effects on body mass
 
 ```{r anova-summary}
 
 peng_clean <- penguins %>% 
-  filter(!is.na(body_mass_g), !is.na(sex), !is.na(species))
+  filter(!is.na(body_mass_g), !is.na(sex),
+         !is.na(species))
 
-fit2 <- aov(body_mass_g ~ species * sex, data = peng_clean)
+fit2 <- aov(body_mass_g ~ species * sex,
+            data = peng_clean)
 
 summary(fit2)
 
@@ -445,55 +421,128 @@ summary(fit2)
 
 ## Post-hoc test (Tukey HSD)
 
-The previous output only indicates that there are statistically significant differences in the groups. To find out which groups differ from each other we can, for example, compute *Tukey Honest Significant Differences*.
+To find out which groups differ from each other we can compute *Tukey Honest Significant Differences*.
 
-```{r tukey, eval=FALSE}
+```{r tukey}
 
 TukeyHSD(fit)
 ```
 
-
 ---
-## Assumption checks
-Check assumptions systematically: linearity, normality, homoscedasticity, independence.
 
+## Assumptions Check: Residual Diagnostics
 
+.pull-left[
 ```{r eval=FALSE}
-library(performance)
-library(see)
+library(broom)
+
+diag_data <- augment(penguin_lm_multi)
+
+p_resid <- ggplot(diag_data, aes(.fitted, .resid)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Fitted",
+    x = "Fitted values",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+
+p_qq <- ggplot(diag_data, aes(sample = .std.resid)) +
+  stat_qq(alpha = 0.6) +
+  stat_qq_line() +
+  labs(
+    title = "Normal Q-Q Plot",
+    x = "Theoretical Quantiles",
+    y = "Standardized Residuals"
+  ) +
+  theme_minimal()
 
 ```
+]
 
+.pull-right[
+```{r , echo=FALSE}
+library(patchwork)
 
-```{r }
-par(mfrow = c(1, 2))
+(p_resid / p_qq) + plot_layout(heights = c(3, 3))
 
-# Residuals vs Fitted
-plot(penguin_lm_multi, which = 1, 
-     main = "Linearity & Homoscedasticity")
-
-# Normal Q-Q plot
-plot(penguin_lm_multi, which = 2, 
-     main = "Normality of Residuals")
 
 ```
+]
 
 
 ---
 
-## Multicollinearity: The VIF Check
+## Multicollinearity: VIF Check
 
 When predictors correlate highly, coefficient estimates become unstable. Check Variance Inflation Factor (VIF):
 
 ```{r}
-library(car)
-
 vif(penguin_lm_multi)
 ```
 
 **Rule of thumb**: VIF > 5 indicates problematic multicollinearity. Here, bill length and depth are somewhat correlated but acceptable.
 
 **Solution**: Remove one predictor, combine them, or use regularization.
+---
+
+## Non-paprametric Alternative
+
+What if our data are <span style="background-color: orange">*not normally distributed*</span>? Check **normality** with the: [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test.
+
+.pull-left[
+```{r swt}
+# Shapiro-Wilk test on residuals
+shapiro.test(residuals(penguin_lm_multi))
+
+```
+]
+.pull-right[
+```{r fig.width=4, fig.height=3}
+# Histogram of residuals
+hist(residuals(penguin_lm_multi), 
+     main = "Distribution of Residuals",
+     xlab = "Residuals")
+
+```
+]
+.small[
+**Note**: With large samples, even minor deviations become "significant".
+Focus on visual diagnostics and practical significance.
+]
+---
+
+## Non-parametric alternative to the T-test
+
+If the data are not normally distributed, the [Wilcoxon/Mann-Whitney](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test). Use when: data is skewed, non-normal, or sample size is small.
+
+.pull-left[
+```{r wilcox}
+# Do 2 groups differ?
+# E.g.: flipper length between 2 species---->
+
+# Filter only 2 species for a valid two-group  test
+peng_two <- penguins %>% 
+  filter(species %in% c("Adelie", "Gentoo"))
+
+# Wilcoxon rank-sum test 
+wilcox.test(flipper_length_mm ~ species,
+            data = peng_two)
+
+```
+]
+.pull-right[
+```{r}
+#pairwise comparison between all species
+
+pairwise.wilcox.test(
+  x = penguins$flipper_length_mm,
+  g = penguins$species,
+  p.adjust.method = "BH"
+)
+```
+]
 
 ---
 
@@ -504,8 +553,8 @@ As in the case of ANOVA, check regression assumptions. There are plenty of good 
 
 ---
 
-## Making Predictions from Your Model
-Models are useful for prediction! Let's predict body mass for a new penguin:
+## Making Predictions 
+.small[Models are useful for prediction! Let's predict body mass for a new penguin:]
 
 ```{r}
 # New observation
@@ -523,9 +572,6 @@ predict(penguin_lm_multi, newdata = new_penguin)
 predict(penguin_lm_multi, newdata = new_penguin, 
         interval = "confidence")
 
-# With prediction interval (uncertainty for new observation)
-predict(penguin_lm_multi, newdata = new_penguin, 
-        interval = "prediction")
 ```
 
 ---
@@ -545,31 +591,27 @@ coef(penguin_lm_beta)["flipper_length_mm"]
 coef(penguin_lm_beta)["bill_length_mm"]
 ```
 
-**Note**: A 1 SD increase in flipper length corresponds to a 0.64 SD increase in body mass – the strongest predictor!
+.small[**Note**: A 1 SD increase in flipper length →  0.64 SD increase in body mass – the strongest predictor!]
 
 ---
-## Categorical Predictors: Factor Variables
+## Categorical Predictors
 
-`R` automatically handles categorical variables (factors) by creating dummy variables. Inspect the design matrix:
+`R` automatically handles categorical variables (factors) by creating dummy variables. 
 
 ```{r}
-# See how species is coded
 contrasts(penguins_clean$species)
 
-# View model matrix
+#model matrix
 head(model.matrix(penguin_lm_multi))
 ```
 
+.small[
 - Reference level
 - Other levels
-
-
-
-
-
+]
 
 ---
-## Generalized linear regressions 
+## Generalized linear models
 There are a multitude of other estimators/link functions, so-called **family objects**, e.g., binomial logistic or Poisson regression through the `glm()` function. See `?family` for an overview.
 
 
@@ -582,7 +624,7 @@ There are a multitude of other estimators/link functions, so-called **family obj
 
 ## GLM with Penguins: Logistic Regression Example
 
-Let's predict species (binary: Adelie vs. not) from measurements – a classification problem.
+.small[Let's predict species (binary: Adelie vs. not) from measurements.]
 
 ```{r log-reg}
 # Binary outcome
@@ -601,26 +643,12 @@ exp(coef(penguin_glm))
 
 ```
 
-.right[`r emo::ji("left_arrow_curving_right")`]
 
 ---
-
-class: middle
-.small[
-```{r ref.label = "log-reg", echo = FALSE}
-
-```
-]
-
----
-
 
 ## Assessing model quality
 
 The [`performance` package](https://easystats.github.io/performance/) that is that is part of the [`easystats` collection of packages](https://easystats.github.io/easystats/) offers some functions for assessing model quality, including different types of R². A commonly used metric for logistic regression models, e.g., is Nagelkerke's R².
-
-
-*Note*: The `performance` package also includes several helpful functions for model diagnostics.
 
 ---
 
@@ -628,7 +656,7 @@ The [`performance` package](https://easystats.github.io/performance/) that is th
 
 Compare nested models using Akaike Information Criterion – balances fit and complexity.
 
-```{r probit-reg, eval = FALSE}
+```{r probit-reg}
 # Simple model
 model1 <- lm(body_mass_g ~ flipper_length_mm, 
              data = penguins_clean)
@@ -643,29 +671,21 @@ AIC(model1, model2)
 
 ```
 
-Lower AIC = better model. The complex model is preferred here.
-.right[`r emo::ji("left_arrow_curving_right")`]
-
----
-
-class:middle
 .small[
-```{r ref.label = "probit-reg", echo = FALSE, eval=TRUE}
-```
-]
+Lower AIC = better model. The complex model is preferred here.]
+
 
 ---
-## Compare models step-wise using AIC 
+## Stepwise Selection
 
 Start with a simple model and stepwise remove possible predictors
 
-```{r stepwise}
-# Stepwise selection
-step_model <- step(model1, scope = ~ flipper_length_mm + 
-                     bill_length_mm + bill_depth_mm + species,
-                   trace = FALSE)
-summary(step_model)
+```{r stepwise, eval=FALSE}
+# Stepwise AIC based selection
 
+step <- step(model1, scope = ~ flipper_length_mm + bill_length_mm + species, trace = FALSE)
+
+summary(step)
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -701,7 +721,7 @@ While it is (still) common practice to run regressions, search for 'significant'
 
 ---
 
-## Regression tables
+## Reporting Results
 
 As we have seen in the session on *Exploratory Data Analysis*, there are different options for creating tables as output in `R`:  [`stargazer`](https://cran.r-project.org/web/packages/stargazer/index.html) and [`gtsummary`](http://www.danieldsjoberg.com/gtsummary/)
 
@@ -733,10 +753,184 @@ stargazer(
 ---
 
 class: center, middle
-.ssmall[
+.small[
 ```{r ref.label = "stargazer", echo = FALSE}
 ```
 ]
+
+---
+
+
+## Coefficient Plots (Odds Ratios)
+
+.small[Create coefficient plot]
+
+.pull-left[
+```{r coeffic, fig.width= 5, fig.height=4, eval=FALSE}
+
+library(sjPlot)
+
+# Plot odds ratios with 95% CI
+plot_model(
+  penguin_glm,
+  show.values = TRUE,
+  value.offset = .3,
+  transform = "exp",     # transforms log-odds → odds ratios
+  title = "Odds Ratios for Predicting Adelie Species"
+)
+
+```
+]
+
+.pull-lright[
+
+```{r ref.label = "coeffic", echo = FALSE, fig.width=5, fig.height=6}
+```
+
+]
+
+---
+## Parameters coefficient plot
+
+```{r fig.width= 5, fig.height=4}
+
+library(parameters)
+
+model_parameters(penguin_glm) %>% 
+  plot()+
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+---
+
+## Raw Coefficients (Log-Odds)
+```{r fig.width=5, fig.height=6}
+
+plot_model(
+  penguin_glm,
+  show.values = TRUE,
+  value.offset = .3,
+  transform = NULL,      # keep log-odds
+  title = "Log-Odds Coefficients (Logistic Regression)"
+)
+
+```
+
+
+---
+
+## sjPlot: Marginal Effects Plot
+
+```{r fig.width=5, fig.height=6}
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = "flipper_length_mm",
+  title = "Predicted Probability of Adelie vs. Flipper Length"
+)
+
+```
+
+---
+
+## You can add multiple predictors
+
+```{r fig.width=5, fig.height=6}
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = c("flipper_length_mm", "bill_length_mm"),
+  title = "Marginal Effects: Interaction Surface"
+)
+
+```
+
+
+---
+
+## Prediction plots vs Regressions coefficients
+
+- Regression coefficients are sometimes a bit hard to read
+
+    -they are based on the scale of the independent variable when unstandardized
+    -it is ambiguous what they actually mean substantially
+    -for example, is a coefficient of .2 or .05 (practically) meaningful or not?
+
+- Predictions are a solution
+
+    - they basically draw the regression line into the scatter plot of the Y and X variables
+    - we can read at which level of X which value of Y is expected
+
+---
+
+## Predictions (sjPlot)
+
+```{r fig.width= 7, fig.height=5}
+
+
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = c("bill_depth_mm","bill_length_mm"),
+  title = "Predicted Probability of Adelie by Bill Depth and Length"
+)
+
+
+```
+
+---
+
+## Customized ggplot
+.pull-left[
+```{r fig.width= 4, fig.height=5}
+library(broom)
+library(ggplot2)
+library(dplyr)
+
+coef_df <- tidy(penguin_glm, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = reorder(term, estimate))
+
+coef_p <- ggplot(coef_df, aes(x = term, y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = .15, linewidth = .8) +
+  labs(title = "Logistic Regression Coefficient Plot",
+       x = "Predictor",
+       y = "Estimate (log-odds)") +
+  coord_flip() +
+  theme_minimal()
+
+
+```
+]
+
+
+.pull-right[
+```{r echo=FALSE, fig.width=5, fig.height=6}
+coef_p
+```
+]
+
+
+---
+
+## Summary Table with sjPlot
+
+
+```{r}
+tab_model(
+  penguin_glm,
+  show.ci = TRUE,
+  show.se = TRUE,
+  show.aic = TRUE,
+  transform = "exp",
+  dv.labels = "Predicting Adelie Species"
+)
+
+```
 
 
 ---
@@ -753,7 +947,6 @@ The [`broom`](https://broom.tidymodels.org/) package provides only 3 but very po
 ---
 
 ## Conflicts
-
 
 ```{r}
 # See which packages conflict
@@ -813,7 +1006,7 @@ head(augment_penguin)
 
 Combine all three `broom` functions
 
-```{r}
+```{r broom, eval=FALSE}
 # 1. Get coefficients (tidy)
 coef_table <- tidy(penguin_lm_multi, conf.int = TRUE)
 
@@ -838,7 +1031,15 @@ ggplot(diag_data, aes(x = species, y = .resid, fill = outlier)) +
   theme_minimal()
 ```
 
+---
+class: center, middle
+.small[
+```{r}
 
+```{r ref.label = "broom", echo = FALSE}
+```
+
+]
 
 ---
 
@@ -869,161 +1070,6 @@ class: center, middle
 # [Exercise](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/983625a7d096079e0598f2d60ca1281c757d4659/exercises/Exercise_4_1_3_Regression_Reporting.html) time `r ji("weight_lifting_woman")``r ji("muscle")``r ji("running_man")``r ji("biking_man")`
 
 ## [Solutions](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/983625a7d096079e0598f2d60ca1281c757d4659/solutions/Exercise_4_1_3_Regression_Reporting.html)
-
----
-## Coefficient Plots (Odds Ratios)
-
-Create coefficient plot
-```{r fig.width= 5, fig.height=4}
-
-library(sjPlot)
-
-# Plot odds ratios with 95% CI
-plot_model(
-  penguin_glm,
-  show.values = TRUE,
-  value.offset = .3,
-  transform = "exp",     # transforms log-odds → odds ratios
-  title = "Odds Ratios for Predicting Adelie Species"
-)
-
-
-```
-
----
-## Parameters coefficient plot
-
-```{r fig.width= 5, fig.height=4}
-
-library(parameters)
-
-model_parameters(penguin_glm) %>% 
-  plot()+
-  theme_minimal() +
-  theme(legend.position = "none")
-
-```
-
----
-
-## Raw Coefficients (Log-Odds)
-```{r}
-
-plot_model(
-  penguin_glm,
-  show.values = TRUE,
-  value.offset = .3,
-  transform = NULL,      # keep log-odds
-  title = "Log-Odds Coefficients (Logistic Regression)"
-)
-
-```
-
-
----
-
-## sjPlot: Marginal Effects Plot
-
-```{r}
-plot_model(
-  penguin_glm,
-  type = "pred",
-  terms = "flipper_length_mm",
-  title = "Predicted Probability of Adelie vs. Flipper Length"
-)
-
-```
-
----
-
-## You can add multiple predictors
-
-```{r}
-plot_model(
-  penguin_glm,
-  type = "pred",
-  terms = c("flipper_length_mm", "bill_length_mm"),
-  title = "Marginal Effects: Interaction Surface"
-)
-
-```
-
-
----
-
-## Prediction plots vs Regressions coefficients
-
-- Regression coefficients are sometimes a bit hard to read
-
-    -they are based on the scale of the independent variable when unstandardized
-    -it is ambiguous what they actually mean substantially
-    -for example, is a coefficient of .2 or .05 (practically) meaningful or not?
-
-- Predictions are a solution
-
-    - they basically draw the regression line into the scatter plot of the Y and X variables
-    - we can read at which level of X which value of Y is expected
-
----
-
-## Predictions (sjPlot)
-
-```{r fig.width= 7, fig.height=5}
-
-
-plot_model(
-  penguin_glm,
-  type = "pred",
-  terms = c("bill_depth_mm","bill_length_mm"),
-  title = "Predicted Probability of Adelie by Bill Depth and Length"
-)
-
-
-```
-
----
-
-## Customized ggplot
-
-```{r fig.width= 6, fig.height=4}
-library(broom)
-library(ggplot2)
-library(dplyr)
-
-coef_df <- tidy(penguin_glm, conf.int = TRUE) %>%
-  filter(term != "(Intercept)") %>%
-  mutate(term = reorder(term, estimate))
-
-ggplot(coef_df, aes(x = term, y = estimate)) +
-  geom_point(size = 3) +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
-                width = .15, linewidth = .8) +
-  labs(title = "Logistic Regression Coefficient Plot",
-       x = "Predictor",
-       y = "Estimate (log-odds)") +
-  coord_flip() +
-  theme_minimal()
-
-
-```
-
----
-
-## Summary Table with sjPlot
-
-
-```{r}
-tab_model(
-  penguin_glm,
-  show.ci = TRUE,
-  show.se = TRUE,
-  show.aic = TRUE,
-  transform = "exp",
-  dv.labels = "Predicting Adelie Species"
-)
-
-```
-
 
 
 
