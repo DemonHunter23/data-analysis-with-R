@@ -41,7 +41,7 @@ By the end of the course participants should be:
 |-------------|-----------------|--------------------------------------|
 | **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1b070518acefd90c06c79ddf4ca58b7822fe9529/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/09522ad64ade5f618a15a3be53d305b7463a5a25/slides/4_1_Confirmatory_Data_Analysis.html)**   |
 | *Friday* | *10:45 - 11:00*  | *Break*                             |
-| **Friday** | **11:00 - 12:00** | **[Large Language Models](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1f08cd259f42b841aef850c1fafc383e235c3f1f/slides/5_3_ApplicationR.html)**            |
+| **Friday** | **11:00 - 12:00** | **[Large Language Models & Wikipedia](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1f08cd259f42b841aef850c1fafc383e235c3f1f/slides/5_3_ApplicationR.html)**            |
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
 | **Friday** | **13:00 - 14:45** | **[Reproducible Reporting with R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/a4070c43d4b38ea2a76d5267550edf79ee61db59/slides/5_1_Reporting_w_Rmarkdown.html)**      |
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
