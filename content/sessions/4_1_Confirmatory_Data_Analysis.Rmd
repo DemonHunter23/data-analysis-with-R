@@ -479,6 +479,7 @@ library(patchwork)
 When predictors correlate highly, coefficient estimates become unstable. Check Variance Inflation Factor (VIF):
 
 ```{r}
+library(car)
 vif(penguin_lm_multi)
 ```
 
@@ -703,7 +704,7 @@ class:middle
 
 ## Comparing model performance
 
-The `performance` package we have previously used for calculating Nagelkerke's R² for our logistic regression model also provides a handy function for comparing model performance.
+The `performance` package we have previously used for calculating Nagelkerke's R² for our logistic regression model also provides a function for comparing model performance.
 
 
 ---
@@ -731,20 +732,12 @@ As we have seen in the session on *Exploratory Data Analysis*, there are differe
 
 ```{r stargazer, eval = FALSE}
 library(stargazer)
-
 stargazer(
   penguin_lm_multi, 
   type = "text",        # For console output; use "html" or "latex" for other formats
   title = "Regression Results",
-  dep.var.labels = c("AI Trust"),
-  covariate.labels = c(
-    "Main Branch", 
-    "Participation Frequency", 
-    "Years Coding"
-  ),
-  out.header = FALSE,    # Exclude header metadata if outputting to file
-  digits = 3             # Number of decimal places
-)
+  out.header = FALSE,    
+  digits = 3             
 
 ```
 
