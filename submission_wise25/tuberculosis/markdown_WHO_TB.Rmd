@@ -1,0 +1,673 @@
+---
+title: "Explore global tuberculosis (TB) burden estimates from the World Health Organization"
+author: "R User"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+options(scipen = 15)
+
+```
+
+```{r load-wrangle-data, echo = FALSE}
+library(tidyverse)
+library(tidytuesdayR)
+
+# Dataframe mit gesamten Datenset
+# who_tb_data <- (tidytuesdayR::tt_load('2025-11-11'))$who_tb_data
+# Run once interactively (with internet)
+library(tidytuesdayR)
+tuesdata <- tt_load(2025, week = 45)
+saveRDS(tuesdata$who_tb_data, "who_tb_data.rds")
+
+who_tb_data <- readRDS("who_tb_data.rds")
+
+
+tb_country <- who_tb_data$country
+
+tb_region <- who_tb_data$g_whoregion
+
+tb_year <- who_tb_data$year
+
+
+```
+
+# The data
+
+The data we are using comes from the [*TidyTuesday* project](https://github.com/rfordatascience/tidytuesday), specifically the dataset "WHO TB Burden Data: Incidence, Mortality, and Population" released on November 11, 2025. The original source of this data is the *World Health Organization (WHO)*. We will use data on tuberculosis incidence, mortality, and population. The full combined dataset contains data from `r n_distinct(who_tb_data$country)` countries.
+
+As *TidyTuesday* aggregates this data from official WHO reports, which in turn depend on national data collection, there are differences in the availability of different kinds of data. The individual variables differ regarding the number of countries and years they cover. The dataset covers the period from `r min(who_tb_data$year, na.rm = TRUE)` to `r max(who_tb_data$year, na.rm = TRUE)`. Also, there is missing data for some countries for different years.
+
+## Missing data
+
+As we do not have data for all variables for all countries and years, we want to know whether there are identifiable patterns of missingness in our data.
+
+```{r vis-miss}
+library(visdat)
+
+vis_miss(who_tb_data)
+```
+
+A visual analysis of the data structure shows a high data quality. In summary, only 0.8% of all data points are missing. Important to mention is that the variables for the central incidence analysis (country, year, incidence per 100k) have no missings at all. However the variables regarding mortality show structural gaps for a specific subgroup of observations. These cases will be excluded in the mortality analysis.
+
+## Heatmap
+
+To get a general overview over the global distribution of tuberculosis we used a heatmap for visualization.
+
+```{r heatmap}
+# Pakete
+library(tidyverse)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggplot2)
+library(knitr)
+
+# filter data, aggregate (latest year)
+tb_latest <- who_tb_data %>%
+  filter(year == max(year, na.rm = TRUE)) %>%
+  group_by(iso3, country) %>%
+  summarise(
+    e_inc_100k = first(e_inc_100k),
+    .groups = "drop"
+  )
+
+# get world map
+world <- rnaturalearth::ne_countries(
+  scale = "medium",
+  returnclass = "sf"
+) %>%
+  select(iso3 = iso_a3, name_long, geometry)
+
+# Join per ISO3-Code
+world_tb <- world %>%
+  left_join(tb_latest, by = "iso3")
+
+# plot
+ggplot(world_tb) +
+  geom_sf(aes(fill = e_inc_100k), color = "white", size = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",
+    trans = "sqrt",         # sqrt für bessere Verteilung bei extremen Werten
+    na.value = "grey90",
+    name = "TB cases\nper 100 000"
+  ) +
+  labs(
+    title = "Estimated tuberculosis incidence per 100 000 population",
+    subtitle = paste0("last available year: ",
+                      max(who_tb_data$year, na.rm = TRUE)),
+    caption = "data: WHO TB / TidyTuesday (2025-11-11)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# Top 3 countries
+tb_ranked <- tb_latest %>%
+  drop_na(e_inc_100k) %>%
+  arrange(desc(e_inc_100k)) %>%
+  select(country, e_inc_100k)
+
+top_3 <- tb_ranked %>%
+  slice_head(n=3) %>%
+  pull(country)
+
+max_inc <- tb_ranked %>%
+  slice(1) %>%
+  pull(e_inc_100k)
+
+worst_country <- top_3 %>%
+  first()
+```
+
+The analysis of the WHO data shows significant global differences. Particularly severly affected is `r worst_country`. The estimated incidence there is around `r round(max_inc,0)` cases per 100 000 population. The three countries with the globally highest case rates are `r knitr::combine_words(top_3)`.
+
+# Exploring the Tidy Tuesday data
+
+In the following chaptor will will dive deeper in to the dataset "WHO TB Burden Data: Incidence, Mortality, and Population" and try to elaborate on the following two quetions:
+
+- Did the travel restrictions due to COVID-19 have an impact on infection rates in countries heavily affected by tuberculosis?
+- HIV and tuberculosis: Is there a statistically significant relationship?
+
+
+
+
+## Countries per continent
+
+The dataset is organized according to the six World Health Organization (WHO) regions. To identify the countries assigned to each region, please consult the table below. The first column lists the WHO regions, the second column (accessible via the right-pointing arrow) displays the corresponding countries, and the third column reports the total number of countries within each region.
+
+```{r continents,}
+library(dplyr)
+
+who_regions_codes_2018 <- who_tb_data %>%
+  filter(year == 2018) %>%
+  distinct(g_whoregion, country) %>%   # ← use names
+  arrange(g_whoregion, country) %>%
+  group_by(g_whoregion) %>%
+  summarise(
+    countries = paste(country, collapse = ", "),
+    n_countries = n(),
+    .groups = "drop"
+  )
+
+options(tibble.width = Inf)
+who_regions_codes_2018
+
+
+
+
+```
+
+```{r countries-cont}
+
+```
+
+## Summary statistics
+
+The summary statistics for the numeric variables in the 2018 and 2021 dataset look as follows:
+
+2018:
+
+```{r summarystats18}
+library(dplyr)
+library(tidyr)
+
+tb_2018 <- who_tb_data %>%
+  filter(year == 2018)
+
+num_2018 <- tb_2018 %>%
+  select(where(is.numeric)) %>%
+  select(-year)
+
+summary_tbl_18 <- num_2018 %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  group_by(variable) %>%
+  summarise(
+    n = sum(!is.na(value)),
+    missing = sum(is.na(value)),
+    min = suppressWarnings(min(value, na.rm = TRUE)),
+    q1 = suppressWarnings(quantile(value, 0.25, na.rm = TRUE)),
+    median = suppressWarnings(median(value, na.rm = TRUE)),
+    mean = suppressWarnings(mean(value, na.rm = TRUE)),
+    q3 = suppressWarnings(quantile(value, 0.75, na.rm = TRUE)),
+    max = suppressWarnings(max(value, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+summary_tbl_18
+
+
+
+```
+
+2021:
+```{r summarystats21}
+library(dplyr)
+library(tidyr)
+
+tb_2021 <- who_tb_data %>%
+  filter(year == 2021)
+
+num_2021 <- tb_2021 %>%
+  select(where(is.numeric)) %>%
+  select(-year)
+
+summary_tbl_21 <- num_2021 %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  group_by(variable) %>%
+  summarise(
+    n = sum(!is.na(value)),
+    missing = sum(is.na(value)),
+    min = suppressWarnings(min(value, na.rm = TRUE)),
+    q1 = suppressWarnings(quantile(value, 0.25, na.rm = TRUE)),
+    median = suppressWarnings(median(value, na.rm = TRUE)),
+    mean = suppressWarnings(mean(value, na.rm = TRUE)),
+    q3 = suppressWarnings(quantile(value, 0.75, na.rm = TRUE)),
+    max = suppressWarnings(max(value, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+summary_tbl_21
+
+
+
+```
+
+Comparing the two summary statistics, we observe a decline in tuberculosis incidence between 2018 and 2021. The mean number of new infections per 100,000 population decreased from 68.66 in 2018 to 57.19 in 2021 (c_newinc_100k). A similar pattern is evident for the median, which fell from 32 to 28 over the same period. The substantial gap between the mean and the median suggests a highly uneven distribution of new tuberculosis infections across countries, with a small number of high-incidence countries driving the average.
+
+Tuberculosis mortality per 100,000 population also declined modestly, from 17.58 in 2018 to 17.18 in 2021 (e_mort_100k), accompanied by a slight reduction in the median from 3.7 to 3.65. In contrast to incidence, the decrease in mortality is comparatively small. Given that tuberculosis disease progression and associated mortality can lag infection by up to two years, data from later periods (e.g., 2022 or 2023) may be more informative for assessing mortality effects. Accordingly, the subsequent analysis focuses on new infections per 100,000 population.
+
+Taken together, these descriptive trends provide an initial heuristic indication that COVID-19–related travel restrictions may have influenced tuberculosis incidence and mortality. However, drawing a robust and durable conclusion requires directly relating variation in travel restrictions to changes in tuberculosis incidence, which is undertaken in the following analysis.
+
+## Distribution of variables
+
+We want to explore how some of the numeric variables in our dataset are distributed.
+
+```{r density_mort}
+
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2018))
+
+stats <- tb_filtered %>%
+  summarise(
+    mean   = mean(e_mort_100k, na.rm = TRUE),
+    median = median(e_mort_100k, na.rm = TRUE)
+  )
+
+ggplot(who_tb_data, aes(x = e_mort_100k)) +
+  geom_histogram(bins = 50) +
+  geom_vline(aes(xintercept = mean, color = "Mean"), stats, linewidth = 1) +
+  geom_vline(aes(xintercept = median, color = "Median"),
+             stats, linewidth = 1, linetype = "dashed") +
+  scale_color_manual(values = c("Mean" = "red", "Median" = "blue")) +
+  scale_x_log10()
+
+
+```
+
+```{r density_newinf}
+
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2018))
+
+stats <- tb_filtered %>%
+  summarise(
+    mean   = mean(c_newinc_100k, na.rm = TRUE),
+    median = median(c_newinc_100k, na.rm = TRUE)
+  )
+
+ggplot(who_tb_data, aes(x = c_newinc_100k)) +
+  geom_histogram(bins = 50) +
+  geom_vline(aes(xintercept = mean, color = "Mean"), stats, linewidth = 1) +
+  geom_vline(aes(xintercept = median, color = "Median"),
+             stats, linewidth = 1, linetype = "dashed") +
+  scale_color_manual(values = c("Mean" = "red", "Median" = "blue")) +
+  scale_x_log10()
+
+
+```
+
+```{r boxplot_complete_data}
+
+
+who_tb_data %>%
+  ggplot(aes(x = c_newinc_100k, y = g_whoregion)) +
+  geom_boxplot() +
+  labs(x = "New infections per 100k", y = "WHO region")
+
+
+
+
+
+
+```
+When comparing the World Health Organization (WHO) regions using the boxplot, substantial differences between regions become apparent. A detailed comparison across regions is provided in the chapter [Comparisons between continents](#Comparisons-between-continents). The present section focuses exclusively on the distributional characteristics of new tuberculosis infections per 100,000 people within each region.
+
+A key observation is the considerable heterogeneity within regions, indicating pronounced differences between individual countries.For instance, Africa exhibits a high central tendency and substantial dispersion, with both generally elevated incidence levels across many countries and a subset of countries with exceptionally high rates that further increase the mean. Similar patterns can be observed in the Western Pacific and Eastern Mediterranean regions, where regional averages mask substantial internal variation.
+
+In the Western Pacific region in particular, the mean number of new infections per 100,000 people appears moderate, yet the presence of extreme outliers is striking. This pattern is partly attributable to small island nations, where small population sizes can amplify incidence rates, but also reflects genuinely high tuberculosis burdens in larger countries such as the Philippines and Papua New Guinea. See the following table with the highest incidence rate per 100,000 people in Western Pacific.
+
+
+
+
+```{r table_2018}
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2018))
+
+eastern_med_outliers <- tb_filtered %>%
+  filter(g_whoregion == "Western Pacific") %>%
+  filter(!is.na(c_newinc_100k)) %>%
+  summarise(
+    q1  = quantile(c_newinc_100k, 0.25),
+    q3  = quantile(c_newinc_100k, 0.75),
+    iqr = IQR(c_newinc_100k)
+  ) %>%
+  mutate(
+    lower_bound = q1 - 1.5 * iqr,
+    upper_bound = q3 + 1.5 * iqr
+  )
+
+eastern_med_outlier_list <- tb_filtered %>%
+  filter(g_whoregion == "Western Pacific") %>%
+  filter(!is.na(c_newinc_100k)) %>%
+  crossing(eastern_med_outliers) %>%
+  filter(
+    c_newinc_100k < lower_bound |
+    c_newinc_100k > upper_bound
+  ) %>%
+  arrange(desc(c_newinc_100k)) %>%
+  select(country, year, c_newinc_100k,e_pop_num)
+eastern_med_outlier_list
+
+```
+
+
+## Comparisons between WHO Regions
+
+2018:
+```{r box-2018}
+
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2018))
+
+
+tb_by_region18 <- tb_filtered %>%
+  group_by(g_whoregion) %>%
+  summarise(
+    mean_newinc_100k   = mean(c_newinc_100k, na.rm = TRUE),
+    median_newinc_100k = median(c_newinc_100k, na.rm = TRUE),
+    total_inc_num      = sum(e_inc_num, na.rm = TRUE),
+    mean_inc_num       = mean(e_inc_num, na.rm = TRUE),
+    n_countries        = n_distinct(country)
+  ) %>%
+  arrange(desc(mean_newinc_100k))
+
+tb_by_region18
+```
+
+2021:
+```{r box-2021}
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2021))
+
+tb_by_region21 <- tb_filtered %>%
+  group_by(g_whoregion) %>%
+  summarise(
+    mean_newinc_100k   = mean(c_newinc_100k, na.rm = TRUE),
+    median_newinc_100k = median(c_newinc_100k, na.rm = TRUE),
+    total_inc_num      = sum(e_inc_num, na.rm = TRUE),
+    mean_inc_num       = mean(e_inc_num, na.rm = TRUE),
+    n_countries        = n_distinct(country)
+  ) %>%
+  arrange(desc(mean_newinc_100k))
+
+tb_by_region21
+
+```
+
+```{r boxplot_newinf_2018_2021}
+who_tb_data %>%
+  filter(year %in% c(2018, 2021)) %>%
+  ggplot(aes(x = factor(year), y = c_newinc_100k, fill = factor(year))) +
+
+  geom_violin(alpha = 0.35, trim = FALSE) +
+  geom_boxplot(width = 0.15, fill = "white", alpha = 0.85, outlier.alpha = 0.3) +
+  geom_jitter(width = 0.08, alpha = 0.15, size = 0.8) +
+  scale_y_log10() +
+  facet_wrap(~ g_whoregion) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Year", y = "c_newinc_100k (log10)", title = "TB new and relapse cases distribution (2018 vs 2021)")
+
+```
+
+When examining the changes illustrated by the tables above and the box plots for the different WHO regions on a logarithmic scale, a decline in the mean number of newly reported tuberculosis cases is observed across all regions. However, the magnitude of this reduction varies, with Europe exhibiting a more pronounced decrease compared with regions such as Africa.
+
+2018:
+```{r box-mort-2018}
+
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2018))
+
+
+tb_by_region18 <- tb_filtered %>%
+  group_by(g_whoregion) %>%
+  summarise(
+    mean_mort_100k   = mean(e_mort_100k, na.rm = TRUE),
+    median_mort_100k = median(e_mort_100k, na.rm = TRUE),
+    n_countries        = n_distinct(country)
+  ) %>%
+  arrange(desc(mean_mort_100k))
+
+tb_by_region18
+```
+
+2021:
+```{r box-mort-2021}
+tb_filtered <- who_tb_data %>%
+  filter(year %in% c(2021))
+
+tb_by_region21 <- tb_filtered %>%
+  group_by(g_whoregion) %>%
+  summarise(
+    mean_mort_100k   = mean(e_mort_100k, na.rm = TRUE),
+    median_mort_100k = median(e_mort_100k, na.rm = TRUE),
+    n_countries        = n_distinct(country)
+  ) %>%
+  arrange(desc(mean_mort_100k))
+
+tb_by_region21
+
+```
+```{r boxplot_mort_2018_2021}
+who_tb_data %>%
+  filter(year %in% c(2018, 2021)) %>%
+  ggplot(aes(x = factor(year), y = e_mort_100k, fill = factor(year))) +
+  
+  geom_violin(alpha = 0.35, trim = FALSE) +
+  geom_boxplot(width = 0.15, fill = "white", alpha = 0.85, outlier.alpha = 0.3) +
+  geom_jitter(width = 0.08, alpha = 0.15, size = 0.8) +
+  scale_y_log10() +
+  facet_wrap(~ g_whoregion) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Year", y = "e_mort_100k (log10)", title = "TB mortality distribution (2018 vs 2021)")
+```
+
+An examination of mortality rates reveals a substantial decline across all regions, while the overall distribution remains unchanged.
+ 
+
+
+## Relationships between GPD and estimated incidence
+
+
+
+
+
+
+```{r regression}
+
+library(WDI)
+library(tidytuesdayR)
+library(dplyr)
+library(ggplot2)
+
+gdp <- WDI(
+  indicator = "NY.GDP.PCAP.KD",
+  start = 2000,
+  end = 2023,
+  extra = TRUE
+) |>
+  select(iso3c, country, year, gdp = NY.GDP.PCAP.KD) |>
+  filter(!is.na(gdp))
+
+names(gdp)[names(gdp) == "iso3c"] <- "iso3"
+
+
+tb <- who_tb_data |>
+  select(iso3, year, e_inc_100k) |>
+  filter(!is.na(e_inc_100k))
+
+df <- inner_join(tb, gdp, by = c("iso3", "year"))
+
+model <- lm(log(gdp) ~ e_inc_100k, data = df)
+
+summary(model)
+
+
+ggplot(df, aes(x = e_inc_100k, y = gdp)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,   # IMPORTANT
+    se = FALSE,
+    color = "black",
+    linetype = "dashed"
+  ) +
+  scale_y_log10() +
+  labs(
+    title = "GDP per Capita vs Tuberculosis Incidence",
+    subtitle = "Y-axis on log scale; linear trend shown",
+    x = "TB incidence (per 100,000)",
+    y = "GDP per capita (log scale, constant USD)"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+Across country–year observations, higher tuberculosis incidence is strongly associated with lower GDP per capita: each additional TB case per 100,000 people is associated with roughly a 0.4% lower income level. Using GDP per capita data from the World Bank - World Development Indicators (WDI), this strong association is evidenced by the large and precisely estimated regression coefficient (p < 0.001) and by the fact that tuberculosis incidence alone explains about 23% of the variation in GDP per capita across countries and years. The relationship shows a clear connection between economic development and tuberculosis incidence, but it does not provide a complete picture, as other relevant factors also influence both outcomes.
+
+# Relationships between tourism and new cases
+
+## Corrolation between GDP and tourism
+
+```{r corrolation_gdp_arrival}
+
+library(dplyr)
+library(WDI)
+library(ggplot2)
+
+tb <- who_tb_data |>
+  select(
+    iso3 = iso3,
+    year,
+    tb_inc_100k = c_newinc_100k
+  ) |>
+  filter(!is.na(tb_inc_100k))
+
+tourism <- WDI(
+  indicator = "ST.INT.ARVL",
+  start = min(tb$year),
+  end = max(tb$year),
+  extra = TRUE
+) |>
+  select(iso3c, year, arrivals = ST.INT.ARVL) |>
+  filter(!is.na(arrivals))
+
+names(tourism)[names(tourism) == "iso3c"] <- "iso3"
+
+pop <- who_tb_data |>
+  select(
+    iso3,
+    year,
+    pop = e_pop_num
+  ) |>
+  filter(!is.na(pop))
+
+
+tourism_pc <- tourism |>
+  inner_join(pop, by = c("iso3", "year")) |>
+  mutate(
+    arrivals_100k = arrivals / pop * 100000
+  )
+
+df <- tb |>
+  inner_join(tourism_pc, by = c("iso3", "year"))
+
+gdp <- WDI(indicator = "NY.GDP.PCAP.KD", start = 2000, end = 2023, extra = TRUE) |>
+  select(iso3c, year, gdp_pc = NY.GDP.PCAP.KD) |>
+  filter(!is.na(gdp_pc)) |>
+  rename(iso3 = iso3c) |>
+  mutate(gdp_100k = gdp_pc * 100000)
+
+plot_df <- tourism_pc |>
+  inner_join(gdp, by = c("iso3", "year")) |>
+  filter(arrivals_100k > 0, gdp_100k > 0)
+
+ggplot(plot_df, aes(arrivals_100k, gdp_100k)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    title = "GDP (per 100k capita) vs Arrivals (per 100k)",
+    x = "Arrivals per 100k (log)",
+    y = "GDP per 100k capita (log)"
+  ) +
+  theme_minimal()
+
+cor(log(plot_df$arrivals_100k), log(plot_df$gdp_100k))
+
+
+```
+
+When examining the relationship between GDP per 100,000 inhabitants and arrivals per 100,000 inhabitants across countries, using international travel data from the UN Tourism Data and World Bank tourism indicators, we find evidence of a weak to moderate correlation. To address the possibility that higher arrival numbers are partly driven by generally elevated levels of economic activity, we estimate a regression model in which GDP per capita and arrivals per 100,000 inhabitants are used to explain the evolution of new incidents over time.
+
+## Regression between Tuberculosis Incidence, GDP, and Tourism
+
+```{r regression_tb_inc_GDP_arrivals}
+
+df <- tb |>
+  inner_join(tourism_pc, by = c("iso3", "year")) |>
+  inner_join(gdp, by = c("iso3", "year")) |>
+  mutate(arrivals_per_gdp_pc = arrivals_100k / gdp_pc)
+
+df_clean <- df |>
+  subset(tb_inc_100k > 0 & arrivals_100k > 0 & gdp_100k > 0)
+
+model_log <- lm(log(tb_inc_100k) ~ log(arrivals_100k) + log(gdp_100k) ,data = df_clean)
+
+summary(model_log)
+
+ggplot(df, aes(tb_inc_100k, log(arrivals_per_gdp_pc),)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm")
+
+
+```
+
+Controlling for GDP per capita, tourist arrivals are not associated with higher incidence rates; the estimated effect is small and negative, and economically negligible. In contrast, GDP per capita shows a strong negative relationship with new incidents, indicating that higher levels of economic development are closely linked to lower incidence. Overall, the weak raw correlation between arrivals and incidents appears to be largely driven by underlying economic conditions rather than tourism itself.
+
+These results suggest that, once economic development is accounted for, tourism intensity is not a major correlate of TB incidence, whereas within-country conditions associated with economic development play a much larger role.
+
+Because the UN Tourism and World Bank tourism indicators are only available up to 2021, a deeper assessment and regression analysis of the effects of COVID 19 travel bans could not be conducted.
+
+
+# Share of global tuberculosis deaths by HIV status
+
+
+
+
+```{r regression_tb_HIV}
+
+
+tb_global <- who_tb_data %>%
+  summarise(
+    deaths_tb_hiv = sum(e_mort_tbhiv_num, na.rm = TRUE),
+    deaths_tb_nohiv = sum(e_mort_exc_tbhiv_num, na.rm = TRUE),
+    deaths_tb_total = sum(e_mort_num, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_die_tb_with_hiv = deaths_tb_hiv / deaths_tb_total,
+    p_die_tb_without_hiv = deaths_tb_nohiv / deaths_tb_total
+  )
+
+tb_global
+
+```
+
+Across all countries and years, about 26% of all tuberculosis deaths occurred among HIV-positive individuals, while roughly 74% occurred among HIV-negative individuals. This indicates that HIV substantially contributes to the global TB mortality burden, even though most TB deaths still occur in people without HIV.
+
+
+
+
