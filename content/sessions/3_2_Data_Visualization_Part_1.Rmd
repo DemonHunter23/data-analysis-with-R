@@ -1,8 +1,8 @@
 ---
 title: "Data Literacy: Introduction to R "
-subtitle: "Data Visualization - Part 1"
+subtitle: "Data Visualization"
 author: "Veronika Batzdorfer"
-date: "2025-05-24"
+date: "2025-11-21"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -38,188 +38,19 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 - grammar of graphics
 ]
 
-There's more that we won't cover:
-- [`lattice`](https://cran.r-project.org/web/packages/lattice/index.html) plots, for example
-
----
-
-```{r load_tuesdata, echo=FALSE}
-library(tidyverse)
-library(dplyr)
-
-stackoverflow_survey_questions <- read_csv("./data/stackoverflow_survey_questions.csv")
-stackoverflow_survey_single_response <- read_csv("./data/stackoverflow_survey_single_response.csv")
-qname_levels_single_response_crosswalk <- read_csv("./data/qname_levels_single_response_crosswalk.csv")
-
-df <- stackoverflow_survey_single_response %>%
-  rename(
-    response_id = response_id,
-    main_branch = main_branch,
-    age_group = age,
-    remote_work = remote_work,
-    education_level = ed_level,
-    years_coding = years_code,
-    years_pro_coding = years_code_pro,
-    dev_type = dev_type,
-    org_size = org_size,
-    purchase_influence = purchase_influence,
-    build_vs_buy = buildvs_buy,
-    visit_frequency = so_visit_freq,
-    has_account = so_account,
-    participation_frequency = so_part_freq,
-    community_belief = so_comm,
-    ai_usage = ai_select,
-    ai_sentiment = ai_sent,
-    ai_acc = ai_acc,
-    ai_complexity = ai_complex,
-    ai_threat = ai_threat,
-    survey_length = survey_length,
-    survey_ease = survey_ease,
-    yearly_compensation = converted_comp_yearly,
-    r_used = r_used,
-    r_want_to_use = r_want_to_use
-  )
-```
-
-```{r cleaning-2, echo=FALSE}
-# Recode main_branch
-df <- df %>%
-  mutate(
-    main_branch = case_when(
-      main_branch == 1 ~ "Developer by profession",
-      main_branch == 2 ~ "Learning to code",
-      main_branch == 3 ~ "Not primarily a developer",
-      main_branch == 4 ~ "Hobbyist",
-      main_branch == 5 ~ "Former developer",
-      TRUE ~ as.character(main_branch)
-    )
-  )
-
-# Recode age_group
-df <- df %>%
-  mutate(
-    age_group = case_when(
-      age_group == 1 ~ "18-24",
-      age_group == 2 ~ "25-34",
-      age_group == 3 ~ "35-44",
-      age_group == 4 ~ "45-54",
-      age_group == 5 ~ "55-64",
-      age_group == 6 ~ "65+",
-      age_group == 7 ~ "Prefer not to say",
-      age_group == 8 ~ "Under 18",
-      TRUE ~ as.character(age_group)
-    )
-  )
-
-# Recode remote_work
-df <- df %>%
-  mutate(
-    remote_work = case_when(
-      remote_work == 1 ~ "Hybrid",
-      remote_work == 2 ~ "In-person",
-      remote_work == 3 ~ "Remote",
-      TRUE ~ as.character(remote_work)
-    )
-  )
-
-# Recode education_level
-df <- df %>%
-  mutate(
-    education_level = case_when(
-      education_level == 1 ~ "Associate degree",
-      education_level == 2 ~ "Bachelor’s degree",
-      education_level == 3 ~ "Master’s degree",
-      education_level == 4 ~ "Primary/elementary school",
-      education_level == 5 ~ "Professional degree",
-      education_level == 6 ~ "Secondary school",
-      education_level == 7 ~ "Some college",
-      education_level == 8 ~ "Other",
-      TRUE ~ as.character(education_level)
-    )
-  )
-
-# Recode so_visit_freq
-df <- df %>%
-  mutate(
-    visit_frequency = case_when(
-      visit_frequency == 1 ~ "A few times per month or weekly",
-      visit_frequency == 2 ~ "A few times per week",
-      visit_frequency == 3 ~ "Daily or almost daily",
-      visit_frequency == 4 ~ "Less than once per month or monthly",
-      visit_frequency == 5 ~ "Multiple times per day",
-      TRUE ~ as.character(visit_frequency)
-    )
-  )
-
-df <- df %>%
-  mutate(
-    ai_sentiment = case_when(
-      ai_sentiment == 1 ~ "Favorable",
-      ai_sentiment == 2 ~ "Indifferent",
-      ai_sentiment == 3 ~ "Unfavorable",
-      ai_sentiment == 4 ~ "Unsure",
-      ai_sentiment == 5 ~ "Very favorable",
-      ai_sentiment == 6 ~ "Very unfavorable",
-      TRUE ~ as.character(ai_sentiment)
-    )
-  )
-
-# Recode ai_threat
-df <- df %>%
-  mutate(
-    ai_threat = case_when(
-      ai_threat == 1 ~ "I'm not sure",
-      ai_threat == 2 ~ "No",
-      ai_threat == 3 ~ "Yes",
-      TRUE ~ as.character(ai_threat)
-    )
-  )
-
-# Recode ai_complex
-df <- df %>%
-  mutate(
-    ai_complexity = case_when(
-      ai_complexity == 1 ~ "Bad at complex tasks",
-      ai_complexity == 2 ~ "Good",
-      ai_complexity == 3 ~ "Neither ",
-      ai_complexity == 4 ~ "Very poor at complex tasks",
-      ai_complexity == 5 ~ "Very well at complex tasks",
-      TRUE ~ as.character(ai_complexity)
-    )
-  )
-
-# Recode ai_acc
-df <- df %>%
-  mutate(
-    ai_acc = case_when(
-      ai_acc == 1 ~ "Highly distrust",
-      ai_acc == 2 ~ "Highly trust",
-      ai_acc == 3 ~ "Neither trust nor distrust",
-      ai_acc == 4 ~ "Somewhat distrust",
-      ai_acc == 5 ~ "Somewhat trust",
-      TRUE ~ as.character(ai_acc)
-    )
-  )
-```
-
 ---
 ### Data for this session
-```{r}
-amount_topcountries <- stackoverflow_survey_single_response %>%
-  filter(!is.na(country)) %>% 
-  group_by(country) %>%
-  summarise(Amount = n()) %>%
-  arrange(desc(Amount)) %>%
-  head(20) %>%                     # Top 20 first
-  mutate(country = reorder(country, Amount)) %>%  # Reorder country factor
-  ungroup()
+```{r load_tuesdata, warning=FALSE, message=FALSE}
 
+library(palmerpenguins)
+library(tidyverse)
+library(ggbeeswarm)
 
-amount_topcountries %>% head()
+df <- penguins %>% drop_na()
+
 ```
 
 ---
-
 ## Graphics in `R`
 
 The `graphics` package is already included.
@@ -228,22 +59,22 @@ The `graphics` package is already included.
 ```{r graphics_barplot, eval = FALSE}
 
 #-- Adjust plot margins--
-par(mar = c(10, 4, 4, 2))  
+# Create summary data first
+spec_counts <- df %>% 
+  count(species) %>% 
+  arrange(desc(n))
+
+par(mar = c(5, 4, 4, 2))  
 
 barplot(
-  height = amount_topcountries$Amount,
-  names.arg = amount_topcountries$country,
-  las = 2,                          # Rotate labels for readability
-  main = "Top 20 Countries by Count",
+  height = spec_counts$n,
+  names.arg = spec_counts$species,
+  las = 2,                          
+  main = "Penguin Species Count",
   ylab = "Number of Records",
-  cex.names = 0.9,                 # Resize labels
-  border = NA                      # Remove border 
+  col = c("darkorange", "purple", "cyan4"),
+  cex.names = 0.9
 )
-
-#-- Reset margins after the plot
-par(mar = c(5, 4, 4, 2))
-
-
 ```
 ]
 
@@ -259,17 +90,13 @@ The most basic function to plot in R is `plot()`.
 
 .pull-left[
 ```{r basic_plot, eval = FALSE}
-options(scipen = 999) #prevent exponent. scientific notation
 
-
-plot_df <- stackoverflow_survey_single_response %>% 
-  filter(!is.na(converted_comp_yearly),
-         !is.na(years_code))
-
-
-plot(plot_df$years_code,
-     plot_df$converted_comp_yearly)
-
+plot(df$bill_length_mm, df$flipper_length_mm,
+     main = "Bill vs. Flipper Length",
+     xlab = "Bill Length (mm)",
+     ylab = "Flipper Length (mm)",
+     col = "darkblue",
+     pch = 19)
 
 ```
 ]
@@ -278,34 +105,6 @@ plot(plot_df$years_code,
 ```{r ref.label = "basic_plot", echo = FALSE}
 ```
 ]
-
----
-
-
-## Adding to the plot: titles & labels
-
-.pull-left[
-```{r titles_labels, eval = FALSE}
-plot(
-  jitter(df$years_coding, 2), 
-  jitter(df$participation_frequency, 2),
-  pch = 1,
-  main = 
-    "Relationship Experience and Participation Frequency on SO",
-  xlab = 
-    "Year of Experience",
-  ylab = 
-    "SO Participation Frequency"
-)
-
-```
-]
-
-.pull-right[
-```{r ref.label = "titles_labels", echo = FALSE}
-```
-]
-
 
 ---
 
@@ -337,8 +136,8 @@ We can also create different *plot types*, such as
 .pull-left[
 ```{r boxplot, eval = FALSE}
 boxplot(
-  df$years_coding ~
-    df$participation_frequency         
+  df$body_mass_g ~
+    df$year         
 )
 ```
 ]
@@ -347,8 +146,6 @@ boxplot(
 ```{r ref.label = "boxplot", echo = FALSE}
 ```
 ]
-
-
 
 
 ---
@@ -370,12 +167,6 @@ dev.off()
 
 ---
 
-## Exporting plots
-
-It's nice that `R` provides such pleasant plotting opportunities. However, to include them in our papers, we need to export them. As said in the beginning, numerous export formats are available in `R`.
-
----
-
 ## Exporting with *RStudio*
 
 ```{r echo = FALSE}
@@ -389,19 +180,19 @@ Alternatively, you can also export plots with the commands `png()`, `pdf()` or `
 
 ```{r, eval = FALSE}
 png("Plot.png")
-hist(df$years_coding)
+hist(df$body_mass_g)
 dev.off()
 ```
 
 ```{r, eval = FALSE}
 pdf("Plot.pdf")
-hist(df$years_coding)
+hist(df$body_mass_g)
 dev.off()
 ```
 
 ```{r, eval = FALSE}
 jpeg("Plot.jpeg")
-hist(df$years_coding)
+hist(df$body_mass_g)
 dev.off()
 ```
 
@@ -426,41 +217,6 @@ plot_call +
   layer_n
 ```
 
-
----
-## `ggplot2` examples 
-.pull-left[
-```{r radar fig, echo = FALSE}
-knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/143_radar_chart_multi_indiv_2.png?raw=true")
-```
-]
-
-.pull-right[
-```{r density fig, echo = FALSE}
-knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/21_ggplot2_ddensity_plot.png?raw=true")
-```
-]
-
-
-<small><small>Sources: https://www.r-graph-gallery.com/wp-content/uploads/2016/05/143_radar_chart_multi_indiv_2.png and https://www.r-graph-gallery.com/wp-content/uploads/2015/09/21_ggplot2_ddensity_plot.png</small></small>
-
----
-
-## `ggplot2` examples 
-.pull-left[
-```{r scatter fig, echo = FALSE}
-knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/51_scatterplot_linear_model_with_CI_ggplot2.png?raw=true")
-```
-]
-
-.pull-right[
-```{r map fig, echo = FALSE}
-knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/content/img/328_Hexbin_map_USA_4.png?raw=true")
-```
-]
-
-<small><small>Sources: https://www.r-graph-gallery.com/wp-content/uploads/2015/11/51_scatterplot_linear_model_with_CI_ggplot2-300x300.png and https://www.r-graph-gallery.com/wp-content/uploads/2017/12/328_Hexbin_map_USA_4-300x200.png</small></small>
-
 ---
 
 ## Barplots as in `base R`
@@ -468,8 +224,15 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 .tinyish[
 .pull-left[
 ```{r base_barplot, eval = FALSE}
-ggplot(df , aes(x = age_group)) + 
-  geom_bar()
+
+
+ggplot(df, aes(x = fct_infreq(species))) +  
+  geom_bar(fill = c("darkorange", "purple", "cyan4")) +
+  labs(
+    title = "Penguin Species Count",
+    y = "Number of Records",
+    x = NULL
+  ) 
 ```
 ]
 ]
@@ -486,12 +249,8 @@ ggplot(df , aes(x = age_group)) +
 .tinyish[
 .pull-left[
 ```{r base_boxplot, eval = FALSE}
-ggplot(
-  df , 
-  aes(
-    x = as.factor(main_branch), 
-    y = years_coding )
-) + 
+ggplot(df, aes(x = factor(year),
+               y = body_mass_g)) +
   geom_boxplot()
 
 ```
@@ -576,7 +335,6 @@ We will systematically explore which elements are used in `ggplot` in this sessi
 ## Creating your own plot
 We do not want to give a lecture on the theory behind data visualization (if you want that, we suggest having a look at the excellent book [*Fundamentals of Data Visualization*](https://serialmentor.com/dataviz/) by Claus O. Wilke).
 
-Creating plots is all about practice... and 'borrowing' code from others.
 
 Three components are important:
 - Plot initiation and data input
@@ -628,8 +386,9 @@ ggplot(data = df )
 `ggplot` requires information about the variables to plot.
 
 ```{r ggplot_aes, eval = FALSE}
-ggplot(data = df ) +
-  aes(x = years_coding, y = yearly_compensation)
+ggplot(data = df, 
+       aes(x = bill_length_mm, 
+           y = flipper_length_mm)) 
 ```
 ]
 
@@ -647,9 +406,11 @@ ggplot(data = df ) +
 Finally, `ggplot` needs information *how* to plot the variables.
 
 ```{r ggplot_geom, eval = FALSE}
-ggplot(data = df ) +
-  aes(x = years_coding, y = yearly_compensation) +
-  geom_point()
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm)) +
+  geom_point(aes(color = species))
+
 ```
 ]
 
@@ -667,9 +428,10 @@ ggplot(data = df ) +
 We can also add more than one `geom`.
 
 ```{r ggplot_line, eval = FALSE}
-ggplot(data = df) +
-  aes(x = years_coding, y = yearly_compensation) +
-  geom_jitter() +
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm)) +
+  geom_point(aes(color = species))+
   geom_smooth(method = "lm", se = FALSE)
 ```
 ]
@@ -691,13 +453,11 @@ ggplot(data = df) +
 We can add different colors for different groups in our data.
 
 ```{r ggplot_group, eval = FALSE}
-df %>%
-  filter(!is.na(ai_threat)) %>%
-  ggplot(aes(
-    x = years_coding, 
-    y = participation_frequency, 
-    group = main_branch 
-  )) +
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species)) +
+  geom_point(aes(color = species))+
   geom_smooth(method = "lm", se = FALSE)
 
 ```
@@ -717,15 +477,14 @@ We can also change the colors that are used in the plot.
 
 ```{r ggplot_group_man, eval = FALSE}
 
-df %>%
-  filter(!is.na(ai_threat)) %>%
-ggplot(
-  aes(
-    x = years_coding, 
-    y = participation_frequency, 
-    group = main_branch,
-    color = main_branch)) +
-  geom_smooth(method = "lm", se = FALSE) 
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species,
+           color=species)) +
+  geom_point(aes(color = species))+
+  geom_smooth(method = "lm", se = FALSE)
+
 ```
 ]
 
@@ -742,18 +501,19 @@ The legend is drawn automatically, that's handy!
 
 .pull-left[
 ```{r ggplot_group_dark2, eval = FALSE}
-df %>%
-  filter(!is.na(ai_threat)) %>%
-ggplot(
-  aes(
-    x = years_coding, 
-    y = participation_frequency, 
-    group = main_branch,
-    color = main_branch)) +
-  geom_smooth(method = "lm", se = FALSE)  +
-  scale_color_brewer(
+
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species,
+           color=species)) +
+  geom_point(aes(color = species))+
+  geom_smooth(method = "lm", se = FALSE)+
+    scale_color_brewer(
     palette = "Dark2"
-  ) 
+    )
+
+
 ```
 ]
 
@@ -789,18 +549,17 @@ See: https://ggplot2.tidyverse.org/reference/ggtheme.html
 .pull-left[
 ```{r facet_wrap, eval = FALSE}
 
-df %>%
-  filter(!is.na(ai_threat)) %>%
-ggplot(
-  aes(
-    x = years_coding, 
-    y = participation_frequency)) +
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species,
+           color=species)) +
  geom_smooth(
     color = "black", 
     method = "lm", 
     se = FALSE
     ) +
-  facet_wrap(~main_branch, ncol = 3, nrow=2) +
+  facet_wrap(~species, ncol = 3, nrow=2) +
   papaja::theme_apa()
 
 ```
@@ -828,18 +587,17 @@ The most direct interface for manipulating your theme is the `theme()` argument.
 .pull-left[
 ```{r grid_layout, eval = FALSE}
 
-df %>%
-  filter(!is.na(ai_threat)) %>%
-ggplot(
-  aes(
-    x = years_coding, 
-    y = participation_frequency)) +
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species,
+           color=species)) +
  geom_smooth(
     color = "black", 
     method = "lm", 
     se = FALSE
     ) +
-  facet_wrap(~main_branch, ncol = 3, nrow = 2) +
+  facet_wrap(~species, ncol = 3, nrow=2)  +
   theme_bw()+
   theme(
     panel.grid.major = 
@@ -863,18 +621,17 @@ ggplot(
 .pull-left[
 ```{r axis_labels-ggplot, eval = FALSE}
 
-df %>%
-  filter(!is.na(ai_threat)) %>%
-ggplot(
-  aes(
-    x = years_coding, 
-    y = participation_frequency)) +
+ggplot(data = df,
+       aes(x = bill_length_mm,
+           y = flipper_length_mm,
+           group = species,
+           color=species)) +
  geom_smooth(
     color = "black", 
     method = "lm", 
     se = FALSE
     ) +
-  facet_wrap(~main_branch, ncol = 3, nrow = 2) +
+  facet_wrap(~species, ncol = 3, nrow=2)  +
   theme_bw()+
   theme(
     panel.grid.major = 
@@ -884,8 +641,8 @@ ggplot(
     strip.background = 
       element_rect(fill = "white")
   ) +
-  ylab("Participation Frequency") +
-  xlab("Year of Coding Experience")
+  ylab("Flossenlänge [mm]") +
+  xlab("Schnabellänge [mm]")
 ```
 ]
 
@@ -926,12 +683,9 @@ In contrast to standard `R` plots, `ggplot2` outputs are standard objects like a
 
 ```{r eval = FALSE}
 my_fancy_plot <- 
-  ggplot(data = df,
-  aes(
-    x = years_coding, 
-    y = participation_frequency
-  )
-  ) + 
+  ggplot(df, aes(x = bill_length_mm,
+                 y = flipper_length_mm, 
+                 color = species)) +
   geom_point()
 
 my_fancy_plot <- 
@@ -952,24 +706,27 @@ Yet, fiddling with this package can become quite complicated. A very easy-to-use
 
 ## Plotting side by side in one row
 .pull-left[
-```{r one_row, eval = FALSE}
+```{r one_row, eval = FALSE, warning=FALSE}
 library(patchwork)
 
-my_barplot <- 
-  ggplot(
-    df , 
-    aes(x = years_coding)
-  ) + 
-  geom_bar()
 
-my_boxplot <-  
-  ggplot(
-    df , 
-    aes(y = years_pro_coding)
-  ) + 
+p_hist <- ggplot(df,
+                 aes(x = body_mass_g)) +
+  geom_histogram()
+
+p_box <- ggplot(df,
+                aes(y = body_mass_g)) +
   geom_boxplot()
 
-my_barplot | my_boxplot
+p_density <- ggplot(df,
+                    aes(x = body_mass_g)) +
+  geom_density()
+
+
+(p_hist | p_box | p_density) + 
+  plot_layout(ncol = 3) +
+  plot_annotation(title = "Body Mass: Three Views")
+
 ```
 ]
 
@@ -983,7 +740,7 @@ my_barplot | my_boxplot
 ## Plotting in two columns
 .pull-left[
 ```{r one_column, eval = FALSE}
-my_barplot / my_boxplot
+p_hist / p_box
 ```
 ]
 
@@ -1008,37 +765,26 @@ If you're interested in this, you should check out the [`patchwork` repository o
 Exporting `ggplot2` graphics is fairly easy with the `ggsave()` function. It automatically detects the file format. You can also define the plot height, width, and dpi, which is particularly useful to produce high-class graphics for publications.
 
 ```{r eval = FALSE}
-nice_plot <- 
-  ggplot(
-    df , 
-    aes(x = years_coding)
-  ) + 
-  geom_bar()
 
-ggsave("nice_plot.png", nice_plot, dpi = 300)
+
+ggsave("nice_plot.png", p_hist, dpi = 300)
 ```
 
 Or:
 
 ```{r eval = FALSE}
-ggsave("nice_plot.tiff", nice_plot, dpi = 300)
+ggsave("nice_plot.tiff", p_hist, dpi = 300)
 ```
 
 ---
 
 ## Visual exploratory data analysis
 
-In the session on *Exploratory Data Analysis* (EDA), we have said that visualization should be part of EDA. We can use `ggplot2` for this, but there also are many packages out there that offer helpful visualization functions. We will look at two of those, `visdat` (for visualizing missing data patterns) and `GGAlly` (for visualizing correlations) in the following. Many of these packages build on `ggplot2` and their output can, hence, be further customized or extended using `ggplot2` or its extension packages.
-
----
-
-## Plotting the structure of missing data
-
 .pull-left[
 ```{r missing-plot, eval = FALSE}
 library(visdat)
 
-vis_miss(df [,18:23])
+vis_miss(df [,1:5])
 ```
 ]
 
@@ -1047,137 +793,230 @@ vis_miss(df [,18:23])
 ```
 ]
 
----
-
-## Fancier barplots: Relative frequencies
-
-.pull-left[
-```{r fancy_barplot_i, eval = FALSE}
-library(scales)
-
-df %>% 
-  ggplot(
-    aes(
-      x = age_group, 
-      fill = age_group                # Fill bars with color based on age group
-    )
-  ) + 
-  geom_bar(                           # Create a bar plot
-    aes(
-      y = (..count..)/sum(..count..)  # Compute relative frequencies (proportions)
-    )
-  ) +
-  scale_y_continuous(
-    labels = percent                  # Format y-axis labels as percentages
-  ) +
-  ylab("Relative Frequencies")+
-  theme_classic() +
-  theme(legend.position = "none")     # Hide the legend
-
-```
-]
-
-.pull-right[
-```{r ref.label = "fancy_barplot_i", echo = FALSE}
-```
-]
 
 ---
-
-## Fancier barplots: Percentages & formatting
-
-.pull-left[
-```{r fancy_barplot_ii, eval = FALSE}
-
-df  %>% 
-  filter(!is.na(ai_complexity)) %>% 
-  ggplot(aes(x = ai_complexity, 
-             fill = ai_complexity)) + 
-  geom_bar(aes(y = (..count..)/sum(..count..))) +
-  scale_y_continuous(labels = percent,
-                     expand = expansion(mult = c(0, 0.1))) +
-  ylab("Relative Frequencies") +
-  xlab("")+
-  theme_classic()+
-  theme(legend.position = "none")
-```
-]
-
-.pull-right[
-```{r ref.label = "fancy_barplot_ii", echo = FALSE}
-```
-]
-
-
----
-## Are those particpating considering themselves as members?
+## Exploratory Analyses
 
 ```{r warning=FALSE, message=FALSE}
-survey <- stackoverflow_survey_single_response %>%
-  mutate(
-    so_comm = recode(as.character(so_comm),
-                     `1` = "Neutral",
-                     `2` = "No, not at all",
-                     `3` = "No, not really",
-                     `4` = "Not sure",
-                     `5` = "Yes, definitely",
-                     `6` = "Yes, somewhat"),
-    
-    so_part_freq = recode(as.character(so_part_freq),
-                          `1` = "A few times per month or weekly",
-                          `2` = "A few times per week",
-                          `3` = "Daily or almost daily",
-                          `4` = "I have never participated in Q&A on Stack Overflow",
-                          `5` = "Less than once per month or monthly",
-                          `6` = "Multiple times per day")
+# --- STEP 1: Foundation ---
+explanatory_plot <- df %>%
+  # Focus on the core relationship
+  ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
+  
+  # --- STEP 2: Add uncertainty ---
+  geom_smooth(
+    method = "lm", 
+    se = TRUE,  # confidence bands
+    alpha = 0.1,  # Transparency
+    size = 1
+  ) +
+  
+  # --- STEP 3: Raw data distribution ---
+  geom_beeswarm(
+    aes(size = body_mass_g),  # Encode third dimension
+    alpha = 0.6,
+    dodge.width = 0.5  # Separate by species
+  ) +
+  
+  # --- STEP 4: Highlight key insights ---
+  geom_hline(
+    yintercept = 200, 
+    linetype = "dashed",
+    color = "gray30"
+  ) +
+  annotate(
+    "text",
+    x = 45, y = 205,
+    label = "Critical Flipper Length",
+    size = 3.5,
+    color = "gray30",
+    fontface = "italic"
   )
+  
+
 ```
 
 ---
-```{r survey, warning=FALSE, message=FALSE}
 
-library(scales)
+```{r polishplot}
+# --- STEP 5: Polish scales ---
+explanatory_plot <- explanatory_plot +
+  # color palette (colorblind safe)
+  scale_color_manual(
+    values = c("Adelie" = "#0072B2", "Chinstrap" = "#E79F00", "Gentoo" = "#009E73")
+  ) +
+  scale_size_continuous(range = c(1.5, 5)) +
+  
+  # --- STEP 6: Facet by island ---
+  facet_wrap(~ island, ncol = 1) +
+  
+  # --- STEP 7: Custom theme ---
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(face = "bold", size = 16, margin = margin(b = 10)),
+    strip.background = element_rect(fill = "#F0F0F0", color = NA),
+    panel.border = element_rect(color = "gray80", fill = NA),
+    axis.title = element_text(face = "bold")
+  ) +
+  
+  # --- STEP 8: Clear labels ---
+  labs(
+    title = "Bill-Flipper Relationship Across Penguin Species & Islands",
+    subtitle = "Point size represents body mass | Shaded areas show 95% CI",
+    x = "Bill Length (mm)",
+    y = "Flipper Length (mm)",
+    color = "Species",
+    size = "Body Mass (g)",
+    caption = "Data: Palmer Penguins"
+  )
+
+
+```
+
+---
+
+```{r  out.width = "50%"}
+explanatory_plot
+```
+
+
+---
+
+## Which species differ and how much?
+
+```{r differenceplot}
+
+library(ggsignif)
 library(ggrepel)
 
-survey %>%
-  select(country, so_comm, so_part_freq) %>%
-  filter(!is.na(country), !is.na(so_comm), !is.na(so_part_freq)) %>%
-  group_by(country) %>%
-  summarise(
-    ConsiderMember = mean(so_comm %in% c("Yes, definitely", "Yes, somewhat"), na.rm = TRUE),
-#return a logical vector true/false for each row (country) if in freq. group and then calc. mean     
-    particip = mean(so_part_freq %in% c(
-      "Multiple times per day",
-      "Daily or almost daily",
-      "A few times per week",
-      "A few times per month or weekly"), na.rm = TRUE),
-    n = n()
-  ) %>%
-  filter(n > 700) %>%
-  ggplot(aes(particip, ConsiderMember, label = country, col = ConsiderMember)) +
-  geom_text_repel(size = 3, point.padding = 0.25) +
-  geom_point(aes(size = n), alpha = 1) +
-  scale_y_continuous(labels = percent_format()) +
-  scale_x_continuous(labels = percent_format()) +
-  scale_size_continuous(labels = comma_format()) +
-  scale_color_gradientn(colors = viridis::viridis(50))+
-  theme_minimal() +
+ difference_plot <-ggplot(df, aes(x = species, y = body_mass_g, fill = species)) +
+  geom_violin(alpha = 0.4) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.8) +
+  # STATISTICAL ANNOTATION
+  ggsignif::geom_signif(
+    comparisons = list(c("Adelie", "Chinstrap"), c("Chinstrap", "Gentoo")),
+    map_signif_level = TRUE,
+    textsize = 3
+  ) +
+  # REFERENCE LINE
+  geom_hline(yintercept = 5000, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 2.5, y = 5200, 
+           label = "Conservation Threshold", color = "gray50", size = 3) +
+  scale_fill_brewer(palette = "Set2") +
   theme(legend.position = "none") +
-  labs(
-    x = "% who participated at least weekly",
-    y = "% who consider themselves as SO Community",
-    title = "Community Membership by Country and Stack Overflow Participation"
-  )
+  labs(title = "Species Body Mass with Statistical Comparisons")
 
 ```
+
+---
+## Which species differ and how much?
+
+```{r  out.width = "50%"}
+difference_plot
+```
+
 ---
 
-class: middle
+## Excercise
 
-.tiny[
-```{r ref.label = "survey", echo = FALSE}
+# 10 min.
+
+- Create violin plots of `bill_length_mm` by **island**. 
+- Add significance brackets `comparing Biscoe` vs. `Dream islands` and `Dream` vs. `Torgersen`. 
+- Use a colorblind-friendly palette and remove the legend.
+
+---
+
+```{r island}
+# SOLUTION
+
+violin_plot <- ggplot(df, aes(x = island, y = bill_length_mm, fill = island)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width = 0.1, fill = "white") +
+  ggsignif::geom_signif(
+    comparisons = list(c("Biscoe", "Dream"), c("Dream", "Torgersen")),
+    map_signif_level = TRUE
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  labs(
+    title = "Bill Length Variation Across Islands",
+    subtitle = "Violins show distribution; boxes show quartiles",
+    x = "Island",
+    y = "Bill Length (mm)"
+  ) +
+  theme(legend.position = "none")
 ```
-]
+
+---
+
+```{r out.width = "50%"}
+violin_plot
+```
+
+
+---
+
+
+## Exercise II
+
+# 10 min.
+
+
+- Make a scatter plot: `bill_length_mm` vs. `flipper_length_mm` (colored by species). 
+- Label the 5 penguins with highest body mass with their actual mass values. 
+- Add a vertical reference line at the mean bill length and label it. 
+- Use theme_bw() and professional labels.
+
+---
+
+## Solution
+
+```{r groupcomp}
+top_5 <- df %>%
+  slice_max(order_by = body_mass_g, n = 5)
+
+# Calculate ref
+mean_bill <- mean(df$bill_length_mm)
+
+scatterplot <- ggplot(df, aes(x = bill_length_mm,
+               y = flipper_length_mm,
+               color = species)) +
+  geom_point(alpha = 0.6, size = 2) +
+  
+  # DATA LABELS for outliers
+  geom_label_repel(
+    data = top_5,
+    aes(label = round(body_mass_g)),  # Round for clean labels
+    nudge_x = 0.5,
+    min.segment.length = 0,
+    size = 3
+  ) +
+  
+  # REFERENCE LINE + annotation
+  geom_vline(xintercept = mean_bill, linetype = "dashed", color = "gray50") +
+  annotate("text", x = mean_bill + 2, y = 225, 
+           label = paste("Mean:", round(mean_bill, 1), "mm"), 
+           color = "gray50", size = 3, hjust = 0) +
+  
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw(base_size = 12) +
+  labs(
+    title = "Penguin Measurements with Outlier Highlights",
+    subtitle = "Labels show body mass (g) for 5 heaviest individuals",
+    x = "Bill Length (mm)",
+    y = "Flipper Length (mm)",
+    color = "Species"
+  )
+```
+
+---
+
+
+```{r out.width = "60%"}
+scatterplot
+```
 
 
 ---

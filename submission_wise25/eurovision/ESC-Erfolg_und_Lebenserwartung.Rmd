@@ -1,0 +1,459 @@
+---
+title: "ESC-Erfolg und Lebenserwartung"
+author: "Florian, Michael, Samuel"
+date: "2025-12-13"
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+# Grundeinstellungen
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(summarytools)
+```
+
+# Einleitung
+
+In diesem Bericht untersuchen wir, ob es einen statistischen Zusammenhang zwischen der durchschnittlichen Lebenserwartung eines Landes und seinem Erfolg beim Eurovision Song Contest (ESC) gibt.
+
+Wir erwarten, dass Teilnehmer aus höher entwickelten Ländern eine bessere Chance auf einen Sieg im ESC haben. Dies begründen wir auf besser ausgebildete Infrastrukturen und Bildungsmöglichkeiten. Wir untersuchen, ob die Lebenserwartung als ein Indikator für das Entwicklungslevel eines Landes auch mit den Erfolgschancen im ESC korreliert.
+
+# Daten
+## Daten Laden
+Zunächst werden die Daten eingelesen und vorbereitet.
+
+```{r daten-laden-und-verarbeiten}
+
+eurovision <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2022/2022-05-17/eurovision.csv')
+life_expectancy <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2023/2023-12-05/life_expectancy.csv')
+
+```
+## Daten Übersicht
+Der Eurovision Datensatz enthält Informationen zu den Halbfinalisten und Finalisten verschiedener ESC-Events, sowie zu den Veranstaltungen selbst, zwischen 1956 und 2022. Dazu gehören, Platzierungen, Punkte, Nationalität, Namen und weitere Daten, wie unten zu sehen ist.
+
+```{r}
+print(dfSummary(eurovision, 
+                plain.ascii  = FALSE,
+                style        = "grid",
+                graph.magnif = 0.75,
+                varnumbers = FALSE,
+                valid.col    = FALSE,
+                tmp.img.dir  = "/tmp"), 
+      method = "render")
+```
+
+Der Life_Expectancy Datensatz enthält Lebenserwartungen zwischen 1543 und 2021, wobei die Daten vor dem 20. Jahrhundert noch deutlich lückenhafter dokumentiert sind. Es sind zum einen Daten zu spezifischen Ländern enthalten, aber auch Daten zu aggregierten Gruppen, wie zum Beispiel "weniger entwickelte Regionen" ("less developed regions"). Uns interessieren nur die Daten, die mit bestimmten Ländern in Verbindung gebracht werden können.
+
+```{r}
+print(dfSummary(life_expectancy, 
+                plain.ascii  = FALSE,
+                style        = "grid",
+                graph.magnif = 0.75,
+                varnumbers = FALSE,
+                valid.col    = FALSE,
+                tmp.img.dir  = "/tmp"), 
+      method = "render")
+```
+
+Aufgrund der Datenlage, betrachten wir nur Daten aus den Jahren von 1956 bis 2021. Außerdem beschränken wir die Betrachtung auf die Finalwettbewerbe, da die Halbfinale ohnehin schwer vergleichbar sind.
+
+## Datensätze bilden
+### Durchschnittliche Platzierung und Lebenserwartung pro Land
+Der erste Datensatz enthält für jedes teilnehmende Land die durchschnittliche Platzierung, sowie die durchschnittliche Lebenserwartung.
+```{r}
+# 1. Lebenserwartung bereinigen 
+life_agg <- life_expectancy %>%
+  rename(country = Entity) %>%
+  filter(Year >= 1956 & Year <= 2021) %>% 
+  group_by(country) %>%
+  summarise(avg_life_exp = mean(LifeExpectancy, na.rm = TRUE))
+
+# 2. Eurovision bereinigen 
+euro_agg <- eurovision %>%
+  filter(str_detect(section, "grand-final")) %>% 
+  filter(year <= 2021) %>%
+  group_by(artist_country) %>% 
+  summarise(avg_rank = mean(rank, na.rm = TRUE)) %>%
+  rename(country = artist_country)
+
+# 3. Datensätze verbinden 
+plot_data <- inner_join(euro_agg, life_agg, by = "country")
+```
+
+```{r}
+print(dfSummary(plot_data[c('country', 'avg_rank', 'avg_life_exp')], 
+                plain.ascii  = FALSE,
+                style        = "grid",
+                graph.magnif = 0.75,
+                varnumbers = FALSE,
+                valid.col    = FALSE,
+                tmp.img.dir  = "/tmp"), 
+      method = "render")
+```
+
+### Daten mit Lebenserwartungsgruppen
+```{r}
+# 1. Lebenserwartung eines Landes von 1956 bis 2021 mit Lebenserwartungslabel 
+life_groups <- life_expectancy %>%
+  rename(country = Entity) %>%
+  rename(year = Year) %>%
+  filter(year >= 1956 & year <= 2021) %>% 
+  filter(!is.na(Code)) %>%
+  mutate(
+    le_group = case_when(
+      LifeExpectancy < 30                            ~ "<30",
+      LifeExpectancy >= 30 & LifeExpectancy < 40     ~ "30–40",
+      LifeExpectancy >= 40 & LifeExpectancy < 50     ~ "40–50",
+      LifeExpectancy >= 50 & LifeExpectancy < 60     ~ "50–60",
+      LifeExpectancy >= 60 & LifeExpectancy < 70     ~ "60–70",
+      LifeExpectancy >= 70 & LifeExpectancy < 80     ~ "70–80",
+      LifeExpectancy >= 80                           ~ "80+",
+      TRUE                                           ~ NA_character_
+    )
+  )
+```
+Wir filtern zuerst alle Zeilen raus, die nicht zu einem bestimmten Land gehören und außerhalb unseres betrachteten Zeitraums liegen. Dann fügen wir zu jeder Zeile eine Information hinzu, in welches Lebenserwartungsintervall sie gehört.
+
+```{r}
+# 2. Eurovision Finale 
+euro_finals <- eurovision[, c("artist_country", "year", "section", "rank")] %>%
+  filter(section %in% c("grand-final", "final")) %>% 
+  filter(year <= 2021) %>%
+  rename(country = artist_country)
+```
+Wir beschränken den Eurovision Datensatz auf die Finale und auf die Jahre bis 2021, da wir ab 2022 keine Daten mehr haben. Die Einträge mit section = "final" kommen aus früheren Jahren, in denen es noch keine zwei separate Halbfinale gab, während die "grand-final" Teilnahme in den späteren Jahren die Qualifikation durch eine der Halbfinale voraussetzt.
+
+```{r}
+# 3. Datensätze verbinden 
+groups_finals <- inner_join(euro_finals, life_groups, by = c("year", "country"))
+```
+Die Datensätze werden verbunden, indem Zeilen mit übereinstimmendem Jahr und Land zusammengesetzt werden.
+
+```{r}
+print(dfSummary(groups_finals, 
+                plain.ascii  = FALSE,
+                style        = "grid",
+                graph.magnif = 0.75,
+                varnumbers = FALSE,
+                valid.col    = FALSE,
+                tmp.img.dir  = "/tmp"), 
+      method = "render")
+```
+# Analyse
+
+## Durchschnittliche Lebenserwartung pro Jahr über alle Länder
+```{r}
+life_mean_year <- life_expectancy %>%
+  rename(country = Entity) %>%
+  filter(Year >= 1956 & Year <= 2021) %>% 
+  filter(!is.na(Code)) %>%
+  group_by(Year) %>%
+  summarise(avg_life_exp = mean(LifeExpectancy, na.rm = TRUE))
+
+ggplot(life_mean_year, aes(x = as.factor(Year), y = avg_life_exp)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "darkblue") +
+  labs(
+    title = "Average Global Life Expectancy Over Time (1956-2021)",
+    x = "Year",
+    y = "Average Life Expectancy (Years)"
+  ) +
+  scale_x_discrete(breaks = life_mean_year$Year[c(TRUE, rep(FALSE, 4))]) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+```
+
+Wir sehen, dass die durchschnittliche Lebenserwartung über alle Länder über die Jahre stetig gestiegen, und in den letzten Jahren wieder etwas gesunken ist.
+
+## Siege mit hoher vs. niedriger Lebenserwartung
+Wir betrachten nun die Erfolge von Ländern mit überdurchschnittlicher Lebenserwartung im Vergleich mit den Erfolgen von Ländern mit unterdurchschnittlicher Lebenserwartung.
+```{r}
+groups_finals_mean <- inner_join(groups_finals, (life_mean_year %>% rename(year = Year)), by = c("year"))
+
+low_high_winners_count <- groups_finals_mean %>%
+  filter(rank == 1) %>%
+  mutate(comp = if_else(LifeExpectancy >= avg_life_exp, "higher", "lower")) %>%
+  group_by(comp) %>%
+  summarise(count = n())
+
+ggplot(data = low_high_winners_count, aes(x = comp, y = count, fill = comp)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = count), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Winners with Lower vs. Higher than Average Life Expectancy",
+    x = "Life Expectancy Compared to Year's Average",
+    y = "Number of Winners (Count)",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Wir können sehen, dass die Sieger deutlich häufiger für ein Land mit hoher Lebenserwartung antreten. Hier fehlt noch der Sieg Jugoslaviens im Jahr 1989, der zu den Ländern mit niedrigerer Lebenserwartung zugerechnet werden würde. Außerdem gab es im Jahr 1969 zum ersten und letzten mal vier gemeinsame Sieger, die alle zu den Ländern mit höherer Lebenserwartung gehören.
+
+## Siege mit hoher vs. niedriger Lebenserwartung in Relation zur Teilnehmeranzahl
+Da wir nur Daten zu den ESC Finalen und Halbfinalen haben, können wir nicht komplett prüfen, ob wir es mit verzerrten Daten -- durch ungleichmäßige Teilnahmezahlen -- zu tun haben. Dennoch setzen wir die Siege in Relation zur Teilnehmerzahl nach unseren limitierten Daten. Unser Ansatz hierfür ist den Sieg so zu gewichten, dass eine übermäßige Teilnehmerzahl aus Ländern mit höher als durchschnittlichen Lebenserwartungen, weniger für entsprechende Teilnehmer gewertet wird. Analog wird ein Sieg eines Teilnehmenden aus einem Land mit niedrigerer Lebenserwartung in diesem Fall stärker gewichtet.
+
+Wir ignorieren außerdem die Daten aus 1969, da es in dem Jahr mehrere Sieger gab, und die Daten aus dem Jahr 2020, da der ESC in diesem Jahr abgesagt wurde. Die Daten aus dem Jahr 1989 können wir ebenfalls nicht verwenden, da wir keine Lebenserwartungsdaten zu dem Sieger aus Jugoslawien haben.
+```{r}
+euro_clean <- eurovision[, c("artist_country", "year", "section", "rank")] %>%
+  filter(year <= 2021) %>%
+  rename(country = artist_country)
+
+life_clean <- life_expectancy %>%
+  rename(country = Entity) %>%
+  rename(year = Year) %>%
+  filter(year >= 1956 & year <= 2021 & year) %>% 
+  filter(!is.na(Code)) %>%
+  group_by(year) %>%
+  mutate(avg_life_exp = mean(LifeExpectancy, na.rm = TRUE))
+
+combined_clean <- inner_join(euro_clean, life_clean, by = c("year", "country"))
+
+low_high_all <- combined_clean %>%
+  filter(year != 1969 & year != 2020 & year != 1989) %>%
+  mutate(comp = if_else(LifeExpectancy < avg_life_exp, "lower", "higher")) %>%
+  group_by(year) %>%
+  mutate(is_winner_row = (section %in% c("final", "grand-final")) & (rank == 1),
+         winner = comp[is_winner_row])
+
+year_winner <- low_high_all %>%
+  group_by(year) %>%
+  summarise(winner) %>%
+  distinct()
+
+low_high_winners_weighted <- low_high_all %>%
+  group_by(year, comp) %>%
+  summarise(count = n()) %>%
+  left_join(year_winner, by = "year") %>%
+  ungroup() %>%
+  group_by(year) %>%
+  summarise(winner = winner,
+            total_count = sum(count),
+            winner_count = count[comp == winner],
+            ratio = winner_count / total_count,
+            score = 1 - ratio,
+            score_adjusted = if_else(1 - ratio == 0, 0.1, 1 - ratio),
+            .groups = 'drop') %>%
+  select(winner, score, score_adjusted) %>%
+  ungroup() %>%
+  group_by(winner) %>%
+  summarise(score = sum(score), score_adjusted = sum(score_adjusted))
+
+ggplot(data = low_high_winners_weighted, aes(x = winner, y = score, fill = winner)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = score), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Weighted Score (Uncontested Wins Ignored)",
+    x = "Life Expectancy Compared to Year's Average",
+    y = "Weighted Score",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Dieser Graph ignoriert die Siege, in denen ein Finale vollständig durch Länder mit höherer Lebenserwartung abgedeckt sind. Um eine Idee davon zu bekommen, wie viele Siege jeweils ohne Wettkampf -- d.h. die Teilnehmer waren alle in einer gemeinsamen Gruppe -- gewonnen wurden, werden diese im Folgenden mit einer Punktzahl von 0,1 gewertet.
+
+```{r}
+ggplot(data = low_high_winners_weighted, aes(x = winner, y = score_adjusted, fill = winner)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = score_adjusted), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Weighted Score (Uncontested Wins Score 0.1)",
+    x = "Life Expectancy Compared to Year's Average",
+    y = "Weighted Score",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Wie wir sehen können, waren ganze 35 der Finale vollständig von Ländern mit überdurchschnittlicher Lebenserwartung besetzt.
+
+Bisher haben wir die durchschnittliche Lebenserwartung über alle Länder der Welt betrachtet. Da der Großteil der europäischen Länder überdurchschnittliche Lebenserwartungen aufzeigt, ist dieser Durchschnitt nicht sehr aussagekräftig. Um ein aussagekräftigeres Bild zu bekommen, betrachten wir nun noch die teilnehmenden Länder.
+
+## Durchschnittliche Lebenserwartung pro Jahr über teilnehmende Länder
+```{r}
+participants <- eurovision[, c("artist_country")] %>%
+  rename(country = artist_country) %>%
+  distinct()
+
+life_mean_year_participants <- life_expectancy %>%
+  rename(country = Entity) %>%
+  filter(Year >= 1956 & Year <= 2021) %>%
+  filter(country %in% participants$country) %>%
+  filter(!is.na(Code)) %>%
+  group_by(Year) %>%
+  summarise(avg_life_exp = mean(LifeExpectancy, na.rm = TRUE))
+
+ggplot(life_mean_year_participants, aes(x = as.factor(Year), y = avg_life_exp)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "darkblue") +
+  labs(
+    title = "Average Participants' Life Expectancy Over Time (1956-2021)",
+    x = "Year",
+    y = "Average Life Expectancy (Years)"
+  ) +
+  scale_x_discrete(breaks = life_mean_year_participants$Year[c(TRUE, rep(FALSE, 4))]) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+```
+
+Wie erwartet sehen wir eine viel höhere durchschnittliche Lebenserwartung.
+
+## Siege mit hoher vs. niedriger Lebenserwartung im Bezug auf den Teilnehmerdurchschnitt
+```{r}
+groups_finals_mean_participants <- inner_join(groups_finals, (life_mean_year_participants %>% rename(year = Year)), by = c("year"))
+
+low_high_winners_count_participants <- groups_finals_mean_participants %>%
+  filter(rank == 1) %>%
+  mutate(comp = if_else(LifeExpectancy >= avg_life_exp, "higher", "lower")) %>%
+  group_by(comp) %>%
+  summarise(count = n())
+
+ggplot(data = low_high_winners_count_participants, aes(x = comp, y = count, fill = comp)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = count), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Winners with Lower vs. Higher than Average Life Expectancy",
+    x = "Life Expectancy Compared to Participants' Year's Average",
+    y = "Number of Winners (Count)",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Wir sehen auch mit dem Lebenserwartungsdurchschnitt beschränkt auf Finalisten, dass die Länder mit höherer Lebenserwartung besser abschneiden. Dies kann allerdings auch daran liegen, dass der Durchschnitt durch sehr niedrige Ausreißer beeinflusst wird.
+
+## Siege mit hoher vs. niedriger Lebenserwartung im Bezug auf den Teilnehmerdurchschnitt in Relation zur Teilnehmeranzahl
+Wir gewichten nun die Siege erneut wie oben und benutzen dabei, den eingeschränkten Lebenserwartungsdurchschnitt.
+
+Wir ignorieren wieder die Daten aus den Jahren 1969, 2020 und 1989.
+```{r}
+life_clean_participants <- life_expectancy %>%
+  rename(country = Entity) %>%
+  rename(year = Year) %>%
+  filter(year >= 1956 & year <= 2021 & year) %>%
+  filter(country %in% participants$country) %>%
+  filter(!is.na(Code)) %>%
+  group_by(year) %>%
+  mutate(avg_life_exp = mean(LifeExpectancy, na.rm = TRUE))
+
+combined_clean_participants <- inner_join(euro_clean, life_clean_participants, by = c("year", "country"))
+
+low_high_all_participants <- combined_clean_participants %>%
+  filter(year != 1969 & year != 2020 & year != 1989) %>%
+  mutate(comp = if_else(LifeExpectancy < avg_life_exp, "lower", "higher")) %>%
+  group_by(year) %>%
+  mutate(is_winner_row = (section %in% c("final", "grand-final")) & (rank == 1),
+         winner = comp[is_winner_row])
+
+year_winner_participants <- low_high_all_participants %>%
+  group_by(year) %>%
+  summarise(winner) %>%
+  distinct()
+
+low_high_winners_weighted_participants <- low_high_all_participants %>%
+  group_by(year, comp) %>%
+  summarise(count = n()) %>%
+  left_join(year_winner_participants, by = "year") %>%
+  ungroup() %>%
+  group_by(year) %>%
+  summarise(winner = winner,
+            total_count = sum(count),
+            winner_count = count[comp == winner],
+            ratio = winner_count / total_count,
+            score = 1 - ratio,
+            score_adjusted = if_else(1 - ratio == 0, 0.1, 1 - ratio),
+            .groups = 'drop') %>%
+  select(winner, score, score_adjusted) %>%
+  ungroup() %>%
+  group_by(winner) %>%
+  summarise(score = sum(score), score_adjusted = sum(score_adjusted))
+
+ggplot(data = low_high_winners_weighted_participants, aes(x = winner, y = score, fill = winner)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = score), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Weighted Score (Uncontested Wins Ignored)",
+    x = "Life Expectancy Compared to Participants' Year's Average",
+    y = "Weighted Score",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Dieser Graph ignoriert die Siege, in denen ein Finale vollständig durch Länder mit höherer Lebenserwartung abgedeckt sind. Um eine Idee davon zu bekommen, wie viele Siege jeweils ohne Wettkampf -- d.h. die Teilnehmer waren alle in einer gemeinsamen Gruppe -- gewonnen wurden, werden diese im Folgenden mit einer Punktzahl von 0,1 gewertet.
+
+```{r}
+ggplot(data = low_high_winners_weighted_participants, aes(x = winner, y = score_adjusted, fill = winner)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = score_adjusted), vjust = -0.5, size = 5) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Weighted Score (Uncontested Wins Score 0.1)",
+    x = "Life Expectancy Compared to Participants' Year's Average",
+    y = "Weighted Score",
+    fill = "Comparison Group"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = c("higher" = "#1F78B4", "lower" = "#E31A1C"))
+```
+
+Wie wir sehen, liegen die Gruppen unter der beschränkten Betrachtung näher beieinander. Dennoch scheinen die Länder mit höherer Lebenserwartung besser abzuschneiden.
+
+## Durchschnittliche Platzierung vs. Durchschnittliche Lebenserwartung (1956-2021)
+Die folgende Grafik zeigt den Zusammenhang. Jeder Punkt repräsentiert ein Land.
+
+```{r grafik, fig.width=10, fig.height=6}
+ggplot(plot_data, aes(x = avg_life_exp, y = avg_rank)) +
+  geom_point(color = "steelblue", size = 3, alpha = 0.7) + 
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  
+  geom_text(aes(label = country), vjust = 1.5, size = 3, check_overlap = TRUE) +
+  labs(
+    title = "Zusammenhang: Lebenserwartung und ESC-Erfolg",
+    subtitle = "Durchschnittliche Platzierung vs. Durchschnittliche Lebenserwartung (1956-2021)",
+    x = "Durchschnittliche Lebenserwartung (Jahre)",
+    y = "Durchschnittliche Platzierung"
+  ) +
+  theme_minimal()
+```
+
+# Statistische Auswertung
+
+Wir prüfen die Hypothese mittels einer Pearson-Korrelation.
+
+```{r statistik}
+test_ergebnis <- cor.test(plot_data$avg_life_exp, plot_data$avg_rank)
+modell <- lm(avg_rank ~ avg_life_exp, data = plot_data)
+steigung <- coef(modell)["avg_life_exp"]
+
+print(test_ergebnis)
+```
+
+### Interpretation
+
+Die Analyse liefert folgende Werte:
+
+* **Korrelation (r):** `r round(test_ergebnis$estimate, 3)`
+* **p-Wert:** `r format.pval(test_ergebnis$p.value, eps = 0.001)`
+
+**Fazit:**
+Da der p-Wert kleiner als 0.05 ist, ist der Zusammenhang statistisch signifikant. Das Modell deutet darauf hin, dass pro Jahr zusätzlicher Lebenserwartung die Platzierung im Schnitt um etwa `r round(steigung, 2)` Plätze sinkt.

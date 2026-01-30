@@ -1,8 +1,8 @@
 ---
 title: "Data Literacy: Introduction to R"
-subtitle: "Applications"
+subtitle: "Local LLMs & Web Scraping"
 author: "Veronika Batzdorfer"
-date: "2025-06-24"
+date: "2025-11-21"
 presenter: Veronika
 output: 
   html_document:
@@ -21,212 +21,731 @@ layout: true
 
 ---
 
+## Objectives
 
-## What is Text Analysis?
 
-- **Text Analysis** involves structuring, processing, and interpreting unstructured textual data.
-- Subfields: tokenization, stopword removal, sentiment analysis, summarization.
-- E.g., Cleaning customer reviews before sentiment modeling.
+```{r objectives, echo=FALSE}
 
----
 
-## From Text Analysis to Language Models
-
-- Traditional text analysis: Bag-of-words, tf-idf, topic modeling.
-- Modern NLP uses **pretrained models** like BERT, GPT, and LLama for:
-  - Summarization
-  - Classification
-  - Generation
-- R ecosystem now supports many LLM workflows.
-
----
-
-## LLMs: A Conceptual Overview
-
-- **LLMs**: Predict next token in a sequence based on context.
-- Trained on huge corpora with billions of parameters.
-- Common tasks:
-  - Code generation
-  - Data explanation
-  - Cleaning and enrichment
-- API interaction (e.g., OpenAI, Ollama) or **local** inference via `chatLLM`.
+# Learning Objectives - Keep focused & achievable
+objectives <- data.frame(
+  Time = c("10min", "10min", "10min", "10min"),
+  Activity = c(
+    "Setup LM Studio",
+    "Query LLMs from R",
+    "Scrape & parse Wikipedia",
+    "Build hybrid LLM+data pipeline"
+  )
+)
+print(objectives, row.names = FALSE)
+```
 
 ---
 
-## Theoretical Guidance: Why Use LLMs?
-
-- **Language as Interface**: Interact with complex systems in plain language.
-- **Cognitive Offloading**: LLMs break complex problems into tractable steps.
-- **Structured Reasoning**: Tools like `LLMAgentR` implement state graphs to mimic planning and reasoning.
-
----
-
-## Exercise 1: Text Preprocessing in R
+## Prerequisites
 
 ```{r}
-library(tidytext)
-library(tibble)
-library(dplyr)
+# Run in R console
+required <- c("httr2", "rvest", "dplyr", "jsonlite", "ggplot2", "igraph")
 
-text_data <- c("Text analysis is fun with R!", 
-               "LLMs make language processing easier.")
 
-df <- tibble(id = 1:2, text = text_data)
+# install.packages(required_packages)
 
-df %>%
-  unnest_tokens(word, text) %>%
-  anti_join(stop_words)
-```
----
-
-## Agent-Based LLMs in R: LLMAgentR
-
--📦 `LLMAgentR` brings LangGraph-style state machines to R.
-
-- Based on `chatLLM`, enables code generation, SQL agents, data cleaning tasks.
-
-- Useful for iterative multi-step workflows (e.g. build–review–revise).
-    
-```{r eval=FALSE}
-install.packages("LLMAgentR")
-library(LLMAgentR)
+# Verify
+installed <- required %in% rownames(installed.packages())
+print(data.frame(Package = required, Ready = installed))
 ```
 
 ---
-## RAG: Retrieval-Augmented Generation with ragnar
-
-- `ragnar`: Efficient implementation of RAG in R using DuckDB.
-
-- Embed documents, store vectors, search + generate.
-
-```{r eval=FALSE}
-library(ragnar)
-
-corpus <- ingest("r4ds.txt")  # your own corpus file
-ask(corpus, "How do you reshape data in R?")
-
-```
 
 
----
-## Visual LLMs with kuzco
+## Access LLMs
 
-- `kuzco`: Apply LLMs to image classification and OCR in R.
+Local: LM Studio
 
+Step-by-Step Configuration
 
-```{r eval=FALSE}
-library(kuzco)
-image <- system.file("extdata", "cat.jpg", package = "kuzco")
-analyze_image(image, task = "describe")
-```
+    - Download: https://lmstudio.ai (choose your OS)
+    - Install a model: Search for "Mistral 7B Instruct" or "Phi-3 mini" (3-4GB VRAM)
+    - Start server: Click "Local Server" → "Start Server" (port 1234)
 
 
+```{r, warning=FALSE}
 
----
-
-##  Calling a Llama Model via API
-
-In this step, we show how to interact with a Llama model via the httr package in R.
-Setup: Get your Llama API endpoint (the URL provided by the service where the Llama model is hosted).
-
-```{r eval=FALSE}
 library(httr2)
+
+request("http://localhost:1234/v1/models") |>
+  req_perform() |>
+  resp_body_json() |>
+  str() 
+
+```
+
+---
+
+
+## Minimal LM Studio Client
+
+```{r}
 library(jsonlite)
 
-# Define the URL for your locally hosted Llama model
-url <- "http://127.0.0.1:1234/v1/completions"  # Adjust to match your actual API endpoint
+lmstudio_chat <- function(prompt) {
+  body <- list(
+    model = loaded_model %||% NULL,  # auto-detected by LM Studio
+    messages = list(list(role = "user", content = prompt)),
+    temperature = 0.3  # Lower = more deterministic
+  )
 
-# Example input prompt
-prompt <- list(
-  prompt = "What can R Studio be used for?",
-  max_tokens = 100,  # Maximum number of tokens to generate
-  temperature = 0.7   # Control randomness
+  resp <- request("http://localhost:1234/v1/chat/completions") |>
+    req_method("POST") |>
+    req_body_json(body) |>
+    req_perform()
+
+  resp_body_json(resp)$choices[[1]]$message$content
+}
+
+```
+
+
+---
+
+
+## Your First LLM Query
+
+
+```{r}
+lmstudio_chat("Explain game theory in one sentence.")
+
+```
+
+
+---
+
+## Structured Data from LLMs
+
+```{r}
+
+json <- lmstudio_chat(
+  "Return 3 sorting algorithms as JSON with fields: name, stable, avg_time."
 )
 
-# Send POST request and check the status
-response <- POST(url,
-                 body = toJSON(prompt), 
-                 encode = "json", 
-                 content_type_json(),  # Ensure we send JSON formatted content
-                 timeout(60))  # Set timeout in case of long processing times
+algos <- jsonlite::fromJSON(json)
 
-# Check if successful
-if (status_code(response) == 200) {
-  # Parse the response content
-  response_content <- content(response, "text")
+
+```
+
+---
+## Wikipedia API  Dive
+Fetching Clean Text
+
+```{r}
+
+fetch_wiki_text <- function(topic, verbose = TRUE) {
+  if (verbose) cat("Fetching:", topic, "...")
   
-  # Parse the JSON response
-  parsed_response <- fromJSON(response_content)
+  resp <- request("https://en.wikipedia.org/w/api.php") |>
+    req_url_query(
+      action = "query",
+      titles = topic,
+      prop = "extracts",
+      exintro = TRUE,
+      explaintext = TRUE,
+      format = "json"
+    ) |>
+    req_perform()
   
+  data <- resp_body_json(resp, simplifyVector = TRUE)
+  pages <- data$query$pages
+  page_id <- names(pages)[1]
+  
+  if (page_id == "-1") {
+    if (verbose) cat(" NOT FOUND\n")
+    return(NA_character_)
+  }
+  
+  extract <- pages[[page_id]]$extract
+  if (verbose) cat(" Done (", nchar(extract), " chars)\n", sep = "")
+  
+  return(extract)
+}
+
+
+```
+
+---
+## Output
+```{r}
+# Test--------------------------
+algo_text <- fetch_wiki_text("Algorithm")
+
+algo_text
+```
+
+
+---
+
+## Your Turn
+
+Fetch content for "Stack (abstract data type)" and "Queue".
+
+
+---
+
+## Create a Reusable Workflow
+
+```{r}
+# Step 1: Define topics
+cs_topics <- c("Algorithm", "Data structure", "Big O notation",
+               "Recursion", "Dynamic programming")
+
+# Step 2: Fetch with progress bar
+library(progress)
+pb <- progress_bar$new(total = length(cs_topics))
+
+content_list <- setNames(vector("list", length(cs_topics)), cs_topics)
+
+for (topic in cs_topics) {
+  content_list[[topic]] <- fetch_wiki_text(topic, verbose = FALSE)
+  pb$tick()
+}
+
+# Step 3: Clean the data
+clean_text <- function(text) {
+  if (is.na(text)) return("")
+  text |>
+    tolower() |>
+    strsplit(" ") |>
+    unlist() |>
+    table() |>
+    sort(decreasing = TRUE) |>
+    head(20)
+}
+
+# Step 4: Analyze word frequencies
+word_freqs <- lapply(content_list, clean_text)
+
+# View results
+print(word_freqs$Algorithm[1:10])
+```
+
+
+---
+
+## Wikipedia API Basics
+
+```{r}
+
+
+# Get raw page content
+page <- "Sorting algorithm"
+response <- request("https://en.wikipedia.org/w/api.php") %>%
+  req_url_query(
+    action = "parse",
+    page = page,
+    format = "json",
+    prop = "text",
+    formatversion = 2
+  ) %>%
+  req_perform() %>%
+  resp_body_json(simplifyVector = TRUE)
+
+# Extract HTML
+html_content <- response$parse$text
+
+```
+
+---
+## Parsing Wikipedia Tables
+
+```{r}
+
+library(rvest)
+
+tables <- read_html(html_content) %>%
+  html_table()
+
+
+comparison_table <- tables[[2]]
+head(comparison_table, 3)
+```
+---
+## Batch Fetching Multiple Pages
+
+```{r}
+fetch_wiki <- function(topic) {
+  Sys.sleep(0.5)  # Rate limiting
+  
+  tryCatch({
+    # Make request
+    resp <- request("https://en.wikipedia.org/w/api.php") %>%
+      req_url_query(
+        action = "query",
+        titles = topic,
+        prop = "extracts",
+        exintro = TRUE,
+        format = "json"
+      ) %>%
+      req_perform()
+    
+    # Parse JSON safely
+    data <- resp_body_json(resp, simplifyVector = TRUE)
+    
+    # SAFE EXTRACTION - pages is a NAMED list like list("12345" = list(...))
+    pages <- data$query$pages
+    
+    # Get the page ID (key) - could be "-1" if page not found
+    page_id <- names(pages)[1]
+    
+    page_data <- pages[[page_id]]
+    extract <- page_data$extract
+  
+    return(extract)
+    
+  }, error = function(e) {
+    message("Wikipedia API error for '", topic, "': ", e$message)
+    return(NA_character_)
+  })
+}
+
+
+topics <- c("Algorithm", "Data structure", "embedding", 
+            "ranking", "generative model")
+
+# Loop with progress messages
+content_list <- list()
+for (topic in topics) {
+  message("Fetching: ", topic)
+  content_list[[topic]] <- fetch_wiki(topic)
+  
+  if (!is.na(content_list[[topic]])) {
+    cat("   ✓ Got", nchar(content_list[[topic]]), "characters\n")
+  } else {
+    cat("   ✗ Failed\n")
+  }
+}
+
+# Show results
+print(content_list)
+```
+
+
+
+---
+Automated Lecture Notes
+
+```{r}
+
+# Goal: Scrape topic → Generate code examples → Save notes
+fetch_wiki <- function(topic) {
+  # Rate limiting - be nice to Wikipedia
+  Sys.sleep(0.5)
+  
+  tryCatch({
+    response <- request("https://en.wikipedia.org/w/api.php") %>%
+      req_url_query(
+        action = "query",
+        titles = topic,
+        prop = "extracts",
+        exintro = TRUE,
+        explaintext = TRUE,  # Get plain text, no HTML
+        format = "json"
+      ) %>%
+      req_perform() %>%
+      resp_body_json(simplifyVector = TRUE)
+    
+    # SAFE extraction - Wikipedia returns pages as NAMED LIST
+    pages <- response$query$pages
+    
+    # Get first page ID (pages is a list like list("12345" = list(...)))
+    page_id <- names(pages)[1]
+    
+    # Check if page exists (ID = -1 means not found)
+    if (page_id == "-1") {
+      message("page not found: '", topic, "'")
+      return(NA)
+    }
+    
+    # Return extract
+    extract <- pages[[page_id]]$extract
+    
+    if (is.null(extract)) {
+      message("No extract available for: '", topic, "'")
+      return(NA)
+    }
+    
+    return(extract)
+    
+  }, error = function(e) {
+    message("api error: ", e$message)
+    return(NA)
+  })
 }
 
 ```
 ---
+## Testing Lecture notes
 
-## Introduction to Reproducibility
+```{r}
+# TEST 
+test_topic <- "Stack (abstract data type)"
 
-- **Reproducibility**: Ensures that experiments can be repeated under the same conditions to confirm results.
-- LLMs like GPT, Llama, and others can be sensitive to settings like model version, temperature, and prompts.
-- Best practices for ensuring reproducibility when working with LLMs include:
-  - Documenting code, environment, and model parameters.
-  - Using version control for models and dependencies.
-  - Ensuring consistent randomization across runs.
+step1 <- fetch_wiki(test_topic)
+print(substr(step1, 1, 200))
+
+```
+
+
 
 
 ---
+## Security Best Practices
+
+```{r}
+# NEVER do this
+unsafe_prompt <- "rm -rf /"  # LLM might suggest dangerous commands
+
+# ALWAYS sanitize
+safe_execution <- function(code) {
+  # 1. Check for system calls
+  if (grepl("system\\(|shell\\(", code)) {
+    stop("System calls not allowed")
+  }
   
-## Track Model Hyperparameters and Results
+  # 2. Run in sandboxed environment
+  # 3. Use {safetensors} for model verification
+  
+  message("Code looks safe. Proceeding...")
+}
 
-Save model configurations (e.g., temperature, max tokens) and results using a configuration file
+# For CI/CD pipelines, use container isolation
+```
 
-```{r eval=FALSE}
-# Model Configuration (config.yml)
-model:
-  type: Llama
-  temperature: 0.7
-  max_tokens: 100
+
+---
+
+## LLM-Powered Code Generation
+Auto-Generate Examples from Text
+
+```{r}
+generate_r_example <- function(concept_name, wiki_text, chat) {
+  prompt <- sprintf(
+    "Based on this Wikipedia text about '%s', write a SHORT R code example.
+    
+    Text excerpt: %s
+    
+    Requirements:
+    - Include comments explaining each step
+    - Use base R only (no external packages)
+    - Max 10 lines of code
+    - Return only the code block",
+    concept_name,
+    substr(wiki_text, 1, 500)
+  )
+  
+  code <- lmstudio_chat(prompt) #function style
+  
+  # Safety check (NEVER eval automatically)
+  if (grepl("system\\(|file.remove", code)) {
+    stop("Unsafe code detected!")
+  }
+  
+  return(code)
+}
+
 
 ```
 
 ---
 
-## How Can We Simulate Norms?
+## Example usage
+```{r}
+example <- generate_r_example("Stack", content_list$`Stack (abstract data type)`, chat)
+cat(example)
+```
 
-1. **Agents with different preferences**: Some agents may value tradition, others may prefer change.
-2. **Role-play scenarios**: Different agents interact based on their preferences and perspectives.
-3. **Emergence**: The group’s behavior may shift to align with one norm over time.
 
 ---
 
-## Mini-Task: Simulating Norm Emergence with Language Models
+## LLM-Powered Entity Extraction
 
-- Imagine we have three agents in a community: **Alice**, **Bob**, **Charlie**.
-- Their goal is to establish a social norm for **greeting** people when they meet.
-- Alice prefers formal greetings, Bob likes informal greetings, and Charlie is neutral.
-
-- **Step 1**: Think about the following questions:
-  - What would each agent say in a conversation about greetings?
-  - How might they try to influence each other’s behavior?
-  - Would they compromise, or would one of them dominate the group behavior?
+```{r}
+# Extract CS concepts automatically
+extract_entities <- function(text, lmstudio_chat) {
+  prompt <- sprintf(
+    "From this CS text, extract ONLY technical terms as a comma-separated list.
+    Text: %s
+    
+    Example output: recursion, stack overflow, Big O notation",
+    substr(text, 1, 500)  # Limit length
+  )
   
-- **Step 2**: Write a **short prompt** to capture norm emergence.
+  entities <- lmstudio_chat(prompt)
+  return(strsplit(entities, ",\\s*")[[1]])
+}
 
----  
+# Run on algorithm summary
+algorithm_entities <- extract_entities(
+  content_list$Algorithm, 
+  chat
+)
 
-## Prompting 
-
-- Set Specific Roles for Agents
-- Sequential Prompts (step-by-step progression)
-- Specify Evaluation of Outcomes
-
-
-
-
-
+print(head(algorithm_entities, 10))
+```
 
 
+---
+
+## Network Graph of Concept Relationships
+
+```{r}
+library(tm)
+
+# Create corpus from all Wikipedia content
+corpus <- Corpus(VectorSource(content_list))
+
+# Preprocess
+dtm <- corpus %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace) %>%
+  DocumentTermMatrix()
+
+# Get term frequencies
+term_freq <- colSums(as.matrix(dtm))
+top_terms <- sort(term_freq, decreasing = TRUE)[1:100]
+
+```
+
+---
+
+## Build network
+```{r}
+library(igraph)
+library(ggraph)
+library(tidygraph)
+
+# Build co-occurrence matrix
+cooccur <- as.matrix(dtm)
+cooccur <- t(cooccur) %*% cooccur
+diag(cooccur) <- 0  # Remove self-loops
+
+# Keep strong relationships only
+cooccur[cooccur < 3] <- 0
+
+# Create graph
+g <- graph_from_adjacency_matrix(cooccur, mode = "undirected", weighted = TRUE)
+```
 
 
+
+---
+
+## Plot of Entities
+
+```{r out.width = "45%"}
+g %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(size = weight), alpha = 0.2) +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 3) +
+  theme_classic() +
+  labs(title = "CS Concept Co-occurrence Network")
+
+
+```
+
+---
+
+## Temporal Analysis of Page Revisions
+```{r}
+# evision history for activity analysis
+get_revision_stats <- function(page_title) {
+  rev_data <- request("https://en.wikipedia.org/w/api.php") %>%
+    req_url_query(
+      action = "query",
+      prop = "revisions",
+      titles = page_title,
+      rvprop = "timestamp|user|size",
+      rvlimit = 500,
+      format = "json"
+    ) %>%
+    req_perform() %>%
+    resp_body_json(simplifyVector = TRUE)
+  
+  revisions <- rev_data$query$pages[[1]]$revisions %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%dT%H:%M:%SZ"))
+  
+  return(revisions)
+}
+
+# Analyze activity
+algo_revisions <- get_revision_stats("Algorithm")
+monthly_activity <- table(format(algo_revisions$timestamp, "%Y-%m"))
+
+
+```
+
+---
+
+## Plot Revisions
+```{r out.width = "45%"}
+# activity over time
+barplot(monthly_activity[1:12],
+        main = "Algorithm Page: Recent Edit Activity",
+        xlab = "Month", ylab = "Edits",
+        col = "orange")
+```
+
+---
+
+## Mini-Project
+
+```{r, eval=FALSE}
+# FINAL PROJECT STRUCTURE
+
+# 1. Choose 3 topics
+my_topics <- c("Hash table", "Binary tree", "Graph traversal")
+
+# 2. Fetch content
+guide <- lapply(my_topics, fetch_wiki_text) |>
+  setNames(my_topics)
+
+# 3. For each topic, generate:
+#    - Summary (1 paragraph)
+#    - R code example
+#    - 3 related concepts
+#    - Difficulty rating (1-5)
+
+generate_study_card <- function(topic, text, chat) {
+  prompt <- sprintf(
+    "Create a study card for '%s' in this exact JSON format:
+    {
+      'topic': '%s',
+      'summary': '...',
+      'difficulty': 3,
+      'related_topics': ['...', '...'],
+      'r_example': '...'
+    }
+    
+    Wikipedia text: %s",
+    topic, topic, substr(text, 1, 800)
+  )
+  
+  json <- chat$chat(prompt)
+  jsonlite::fromJSON(json)
+}
+
+
+```
+
+---
+
+
+```{r, eval=FALSE}
+# 4. Generate cards
+study_cards <- lapply(names(guide), function(topic) {
+  message("Processing: ", topic)
+  generate_study_card(topic, guide[[topic]], chat)
+})
+
+# 5. Save as formatted markdown
+save_study_guide <- function(cards, filename = "study_guide.md") {
+  content <- c("# CS Study Guide\n\n", 
+               unlist(lapply(cards, function(card) {
+                 c(
+                   sprintf("## %s (Difficulty: %d/5)\n", card$topic, card$difficulty),
+                   sprintf("**Summary:** %s\n", card$summary),
+                   sprintf("**Related:** %s\n", paste(card$related_topics, collapse = ", ")),
+                   "```r", card$r_example, "```\n\n"
+                 )
+               })))
+  
+  writeLines(content, filename)
+  message("Saved to: ", filename)
+}
+
+# Run it!
+save_study_guide(study_cards)
+```
+
+
+
+
+---
+## Common Issues & Fixes
+```{r, eval=FALSE}
+# PROBLEM 1: Connection refused
+# SOLUTION: Check LM Studio is running
+httr2::request("http://localhost:1234/v1/models") |>
+  req_perform()
+
+# PROBLEM 2: Empty responses
+# SOLUTION: Increase timeout
+chat$chat("Your prompt", timeout = 60)
+
+# PROBLEM 3: Invalid JSON
+# SOLUTION: Add retry with validation
+for (i in 1:3) {
+  json_str <- chat$chat("Return JSON...")
+  if (jsonlite::validate(json_str)) break
+  Sys.sleep(1)
+}
+
+# PROBLEM 4: Rate limits
+# SOLUTION: Implement polite delays
+polite_chat <- function(prompt) {
+  Sys.sleep(0.5)  # Be nice to your CPU
+  chat$chat(prompt)
+}
+```
+
+
+---
+## Best Practices Checklist
+```{r, echo=FALSE}
+practices <- data.frame(
+  Do = c(
+    "Cache LLM responses",
+    "Validate JSON output",
+    "Use polite delays",
+    "Start small & test",
+    "Read model docs"
+  ),
+  Dont = c(
+    "Eval LLM code blindly",
+    "Hardcode API keys",
+    "Hammer Wikipedia",
+    "Skip error handling",
+    "Use enormous models"
+  )
+)
+
+knitr::kable(practices, caption = "LLM Best Practices")
+```
+
+---
+
+## Resources
+```{r}
+# Quick self-assessment
+cat("During this seminar, I learned to:\n")
+cat("1. Setup LM Studio: _______\n")
+cat("2. Query LLMs from R: _______\n")
+cat("3. Scrape Wikipedia: _______\n")
+cat("4. Build a pipeline: _______\n")
+cat("\nRate the difficulty: 1 2 3 4 5\n")
+cat("What was unclear? _________________\n")
+```
+
+---
+
+## Evaluation
+
+
+```{r shiny-app, echo=FALSE, out.width = "45%"}
+woRkshoptools::include_picture("./evaluation.png")
+```
 
 
 

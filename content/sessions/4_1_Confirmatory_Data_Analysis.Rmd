@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R "
 subtitle: "Confirmatory Data Analysis"
 author: "Veronika Batzdorfer"
-date: "2025-06-23"
+date: "2025-11-21"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -39,135 +39,13 @@ layout: true
 ]
 
 ```{r load-data, echo=FALSE}
-library(tidyverse)
-library(woRkshoptools)
 
-stackoverflow_survey_single_response <- read_csv("./data/stackoverflow_survey_single_response.csv")
+library(palmerpenguins)
 
-df <- stackoverflow_survey_single_response %>%
-  rename(
-    main_branch = main_branch,
-    age_group = age,
-    remote_work = remote_work,
-    education_level = ed_level,
-    years_coding = years_code,
-    years_pro_coding = years_code_pro,
-    purchase_influence = purchase_influence,
-    build_vs_buy = buildvs_buy,
-    visit_frequency = so_visit_freq,
-    has_account = so_account,
-    participation_frequency = so_part_freq,
-    community_belief = so_comm,
-    ai_usage = ai_select,
-    ai_sentiment = ai_sent,
-    ai_complexity = ai_complex,
-    survey_ease = survey_ease,
-    yearly_compensation = converted_comp_yearly,
-  )
-
-df <- df %>% 
-  mutate(ai_trust = rowMeans(across(ai_sentiment:ai_acc, ~as.numeric(.x))))
+penguins_clean <- penguins %>% drop_na()
 
 ```
 
-
-```{r preoproce, echo=FALSE, eval=FALSE}
-
-df <- df %>%
-  mutate(
-    main_branch = case_when(
-      main_branch == 1 ~ "Developer by profession",
-      main_branch == 2 ~ "Learning to code",
-      main_branch == 3 ~ "Not primarily a developer",
-      main_branch == 4 ~ "Hobbyist",
-      main_branch == 5 ~ "Former developer",
-      TRUE ~ as.character(main_branch)
-    )
-  )
-
-# Recode education_level
-df <- df %>%
-  mutate(
-    education_level = case_when(
-      education_level == 1 ~ "Associate degree",
-      education_level == 2 ~ "Bachelor’s degree",
-      education_level == 3 ~ "Master’s degree",
-      education_level == 4 ~ "Primary/elementary school",
-      education_level == 5 ~ "Professional degree",
-      education_level == 6 ~ "Secondary school",
-      education_level == 7 ~ "Some college",
-      education_level == 8 ~ "Other",
-      TRUE ~ as.character(education_level)
-    )
-  )
-
-# Recode so_visit_freq
-df <- df %>%
-  mutate(
-    visit_frequency = case_when(
-      visit_frequency == 1 ~ "A few times per month or weekly",
-      visit_frequency == 2 ~ "A few times per week",
-      visit_frequency == 3 ~ "Daily or almost daily",
-      visit_frequency == 4 ~ "Less than once per month or monthly",
-      visit_frequency == 5 ~ "Multiple times per day",
-      TRUE ~ as.character(visit_frequency)
-    )
-  )
-
-
-# Recode ai_threat
-df <- df %>%
-  mutate(
-    ai_threat = case_when(
-      ai_threat == 1 ~ "I'm not sure",
-      ai_threat == 2 ~ "No",
-      ai_threat == 3 ~ "Yes",
-      TRUE ~ as.character(ai_threat)
-    )
-  )
-
-# Recode ai_complex
-df <- df %>%
-  mutate(
-    ai_complexity = case_when(
-      ai_complexity == 1 ~ "Bad at complex tasks",
-      ai_complexity == 2 ~ "Good",
-      ai_complexity == 3 ~ "Neither ",
-      ai_complexity == 4 ~ "Very poor at complex tasks",
-      ai_complexity == 5 ~ "Very well at complex tasks",
-      TRUE ~ as.character(ai_complexity)
-    )
-  )
-
-#recode ai_acc
-
-#ai_acc,1,Highly distrust
-#ai_acc,2,Highly trust
-#ai_acc,3,Neither trust nor distrust
-#ai_acc,4,Somewhat distrust
-#ai_acc,5,Somewhat trust
-
-df <- df %>%
-  mutate(ai_acc = recode(ai_acc,
-                                `1` = 1,  # Highly distrust
-                                `4` = 2,  # Somewhat distrust
-                                `3` = 3,  # Neutral
-                                `5` = 4,  # Somewhat trust
-                                `2` = 5)) # Highly trust
-
-
-df <- df %>% 
-  filter(!is.na(ai_threat))
-
-
-df$ai_threat <- as.factor(df$ai_threat)
-df$age_group <- as.factor(df$age_group)
-
-df <- df %>%
-  mutate(ai_threat = ifelse(ai_threat %in% c("Yes", "I'm not sure"), 1, 0))
-
-
-```
 
 
 ---
@@ -177,60 +55,94 @@ df <- df %>%
 - We learned how to import/ export data
 - We learned how to wrangle data, subsets, create new variables, recode, merge, pivot
 
-
 ---
 ## Recap Distribution
 
 ```{r fig.width= 5, fig.height=4}
 #plot first variable
-hist(df$ai_acc, 
+hist(penguins_clean$bill_length_mm, 
      col=rgb(0,0,1,0.25), 
           breaks=10,
-     xlab='Trust in AI accuracy (blue) and complexity (red) ',
-     main='Distribution of AI Metrics'
+     xlab='Bill length [mm] ',
+     main='Distribution'
 ) 
-#add second variable
-hist(df$ai_complexity, 
-     col=rgb(1,0,0,0.25), 
-     breaks=10,
-     add=T)
+
 ```
 
 
 ---
 ## Descriptive Statistics
-
+### Select continuous variables for summary
 ```{r}
 library(modelsummary)
 
-df.s <- df %>% 
-  dplyr::select(ai_complexity, ai_acc, ai_threat, visit_frequency) 
-
+df.s <- penguins_clean %>% 
+  select(bill_length_mm, body_mass_g, flipper_length_mm) 
+ 
 datasummary_skim(df.s, output = 'flextable')
 
 ```
 
 ---
 
-## Bivariate correlations
+## Visualize Bivariate Relationships
 
 ```{r fig.width= 6, fig.height=4}
-# Subset and drop missings
-dt.com <- df %>% 
-  dplyr::select(ai_complexity, ai_acc, ai_threat, ai_sentiment,years_coding) %>% 
-  drop_na()
+library(ggplot2)
 
-#  corrplot
-library(corrplot)
-corrplot.mixed(cor(dt.com), lower.col = "black", number.cex = .7, insig='blank')
+# Scatter pl. with trend line----
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  labs(title = "Body Mass by Flipper Length",
+       subtitle = "Clear positive linear relationship",
+       x = "Flipper Length (mm)",
+       y = "Body Mass (g)")
+```
+
+Tip: `facet_wrap()` can show separate relationships by group!
+
+
+---
+
+## Simple Linear Regression: Our First Model
+
+
+```{r}
+# Estimate the model
+penguin_lm_simple <- lm(
+  body_mass_g ~ flipper_length_mm,
+  data = penguins_clean
+)
+
+# View coefficients
+penguin_lm_simple
+```
+---
+
+## Interpreting Model Output: What Does It Mean?
+
+```{r}
+
+summary(penguin_lm_simple)
 ```
 
 
 ---
 
-## `R` is straightforward and literate
+## Interpreting Coefficients with `parameters`
 
-`R` combines the best of two worlds: It is straightforward to write formulas 
+```{r}
+library(parameters)
+
+model_parameters(penguin_lm_simple)
+```
+
+
+---
+
+## Formula Syntax in `R` 
+
 
 ```{r eval = FALSE}
 y ~ x1 + x2 + x3
@@ -297,6 +209,25 @@ y ~ .
 
 ---
 
+## Multiple Regression: Adding More Predictors
+
+```{r}
+penguin_lm_multi <- lm(
+  body_mass_g ~ flipper_length_mm +
+    bill_length_mm +
+    bill_depth_mm +
+    species,
+  data = penguins_clean
+)
+
+# Compare with simple model
+anova(penguin_lm_simple, penguin_lm_multi)
+```
+
+Why multiple?
+
+---
+
 ## Interaction effects with `*` and `:`
 
 We can also easily add interaction effects to a model. As this is the same as multiplying predictor variables, we also use the <span style="color:orange">**`*`**</span> sign for that.
@@ -311,6 +242,29 @@ The code above creates a model formula that includes both the <span style="backg
 y ~ x1 + x2 + x1:x2
 ```
 
+
+---
+
+## Interaction Effects with Penguins
+Does the effect of flipper length on body mass differ by species?
+
+
+```{r}
+penguin_lm_interact <- lm(
+  body_mass_g ~ flipper_length_mm * species,
+  data = penguins_clean
+)
+
+```
+---
+## Interaction Effects
+```{r}
+model_parameters(penguin_lm_interact)
+```
+
+
+**Interpretation**: The flipper_length_mm:speciesChinstrap interaction means the slope is 8.9g/mm less steep for Chinstraps vs Adelie.
+Visualize interactions to aid interpretation!
 
 ---
 
@@ -346,20 +300,27 @@ The previous descriptions mainly refer to formulas used in regression models in 
 ---
 
 ## Testing group differences in the distribution
+### T-Test: Two Groups
 
 A common method for analyzing group differences are t-tests. You can use the two-sample <span style="background-color: yellow">`t.test()`</span> function:
 
 ```{r t-test}
-df_filtered <- df %>%
-  filter(age_group >= 1, age_group <= 6) %>%
-  mutate(
-    age_group = case_when(
-      age_group >= 1 & age_group <= 3 ~ "1–3",
-      age_group >= 4 & age_group <= 6 ~ "4–6"
-    )
-  )
+#  two-sample t-test
+# Research question: Do male and female penguins differ in body mass?
 
-t.test(ai_threat ~ age_group, data = df_filtered)
+t_test_sex <- t.test(
+  body_mass_g ~ sex,          # Outcome ~ Grouping variable
+  data = penguins_clean,      
+  alternative = "two.sided"   # Two-tailed test 
+)
+
+```
+
+---
+## T-Test Results
+
+```{r}
+print(t_test_sex)
 
 ```
 
@@ -368,162 +329,221 @@ t.test(ai_threat ~ age_group, data = df_filtered)
 ]
 
 ---
+## Visualize T-Test
 
-## Test of normality
-
-What if our data are <span style="background-color: orange">*not normally distributed*</span> in the first place, violating one of the basic assumptions of performing t-tests? To check this: [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test of normality.
-
-```{r swt, eval=FALSE}
-
-shapiro.test(df_filtered$age_group)
-
-```
-
----
-
-## Wilcoxon/Mann-Whitney test
-
-If the data are not normally distributed, the [Wilcoxon/Mann-Whitney](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test) test can be a suitable alternative.
-
-```{r wilcox}
-
-wilcox.test(ai_trust ~ age_group, data = df_filtered)
-
-```
-
----
-
-## Testing multiple groups with an ANOVA
-
-There are situations in which we want to test differences across multiple groups. The classic method to use for this is an analysis of variance (ANOVA) and its many variants (ANCOVA, MANOVA, etc.). 
-
-```{r anova}
-#One-way anova
-anova <- aov(ai_trust  ~ country, data = df)
-anova
-```
-
----
-
-## Testing multiple groups with an ANOVA
-
-To get some more detailed information, you need to use the `summary()` function we have already seen in the EDA session on the resulting `anova` object. 
-
-```{r anova-summary}
-#F-test
-summary(anova)
-```
-
----
-
-## Post-hoc test
-
-The previous output only indicates that there are statistically significant differences in the groups. To find out which groups differ from each other we can, for example, compute *Tukey Honest Significant Differences*.
-
-```{r tukey, eval=FALSE}
-TukeyHSD(anova)
-
-```
-
-
----
-
-## Simple linear regressions
-
-Estimating a linear model (OLS). The function for this is <span style="background-color: orange">`lm()`</span>. 
-
-```{r linmodel, eval = FALSE}
-simple_linear_model <- 
-  lm(
-    ai_trust ~ main_branch + participation_frequency + ai_threat+  ai_sentiment, 
-    data = df
-  )
-
-simple_linear_model
-```
-
-.right[`r emo::ji("left_arrow_curving_right")`]
-
----
-
-class: middle 
-.small[
-```{r ref.label = "linmodel", echo = FALSE}
-```
-]
-
----
-## OLS Model Summary
+.pull-left[
 
 ```{r}
-library(parameters)
-
-model_parameters(simple_linear_model)
+t_test <- ggplot(penguins_clean,
+                 aes(x = sex, y = body_mass_g,
+                     fill = sex)) +
+  geom_boxplot(alpha = 0.7, show.legend = FALSE) +
+  geom_jitter(width = 0.2, alpha = 0.5, show.legend = FALSE) +
+  labs(
+    title = "Body Mass by Sex: Significant Difference",
+    subtitle = "Males are ~860g heavier than females (p < 0.001)",
+    x = "Sex",
+    y = "Body Mass (g)"
+  ) +
+  scale_fill_manual(values = c(female = "darkorange", male = "steelblue"))
 ```
+]
 
-
----
-
-## Simple linear regressions
-
-As for the ANOVA, we can get some more detailed (and nicely formatted) output using the well-known `summary()` function.
-
-```{r summary-lm, eval = FALSE}
-summary(simple_linear_model)
-```
-
-.right[`r emo::ji("left_arrow_curving_right")`]
-
----
-
-class: middle
-.small[
-```{r ref.label = "summary-lm", echo = FALSE}
+.pull-right[
+```{r}
+t_test
 ```
 ]
 
 ---
-## Quick model inspection 
 
-```{r fig.width= 9, fig.height=6}
-par(mfrow = c(2, 2))
-plot(simple_linear_model)
-```
+## Testing multiple groups: ANOVA
 
----
+Research question: Do species differ in flipper length?
 
-## Assumption checks
-easystats provides some nice features for inspecting model fit. Here's a simple check for normality of the residuals. It is a combination of using a function from the performance package and then using see to plot it.
+```{r anova}
 
-```{r eval=FALSE}
-library(performance)
-library(see)
-check_normality(linear_model) %>% 
-  plot()
-```
+peng_clean <- penguins %>% 
+  filter(!is.na(flipper_length_mm))
 
-QQ Plot
-```{r eval=FALSE}
-check_normality(simple_linear_model) %>% 
-  plot(type = "qq")
-```
-Heteroscedascity
-
-```{r eval=FALSE}
-check_heteroscedasticity(
-  linear_model
-) %>% 
-  plot()
+# 1-way ANOVA
+fit <- aov(flipper_length_mm ~ species, data = peng_clean)
+summary(fit)
 
 ```
 
 ---
-## Overview of model checks (*performance* package)
 
-```{r fig.width= 9, fig.height=6}
-check_model(simple_linear_model)
+## Anova visualization
+.pull-left[
+```{r}
+anova_plot <- ggplot(peng_clean,
+                     aes(x = species,
+                         y = flipper_length_mm,
+                         fill = species)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Flipper Length by Species",
+       y = "Flipper Length (mm)",
+       x = "Species") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
+]
+
+.pull-right[
+```{r}
+anova_plot
+```
+]
+
+
+---
+
+## Two-way ANOVA
+
+Species + Sex effects on body mass
+
+```{r anova-summary}
+
+peng_clean <- penguins %>% 
+  filter(!is.na(body_mass_g), !is.na(sex),
+         !is.na(species))
+
+fit2 <- aov(body_mass_g ~ species * sex,
+            data = peng_clean)
+
+summary(fit2)
+
+```
+
+---
+
+## Post-hoc test (Tukey HSD)
+
+To find out which groups differ from each other we can compute *Tukey Honest Significant Differences*.
+
+```{r tukey}
+
+TukeyHSD(fit)
+```
+
+---
+
+## Assumptions Check: Residual Diagnostics
+
+.pull-left[
+```{r eval=FALSE}
+library(broom)
+
+diag_data <- augment(penguin_lm_multi)
+
+p_resid <- ggplot(diag_data, aes(.fitted, .resid)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Fitted",
+    x = "Fitted values",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+
+p_qq <- ggplot(diag_data, aes(sample = .std.resid)) +
+  stat_qq(alpha = 0.6) +
+  stat_qq_line() +
+  labs(
+    title = "Normal Q-Q Plot",
+    x = "Theoretical Quantiles",
+    y = "Standardized Residuals"
+  ) +
+  theme_minimal()
+
+```
+]
+
+.pull-right[
+```{r , echo=FALSE}
+library(patchwork)
+
+(p_resid / p_qq) + plot_layout(heights = c(3, 3))
+
+
+```
+]
+
+
+---
+
+## Multicollinearity: VIF Check
+
+When predictors correlate highly, coefficient estimates become unstable. Check Variance Inflation Factor (VIF):
+
+```{r}
+library(car)
+vif(penguin_lm_multi)
+```
+
+**Rule of thumb**: VIF > 5 indicates problematic multicollinearity. Here, bill length and depth are somewhat correlated but acceptable.
+
+**Solution**: Remove one predictor, combine them, or use regularization.
+---
+
+## Non-paprametric Alternative
+
+What if our data are <span style="background-color: orange">*not normally distributed*</span>? Check **normality** with the: [Shapiro-Wilk](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test) test.
+
+.pull-left[
+```{r swt}
+# Shapiro-Wilk test on residuals
+shapiro.test(residuals(penguin_lm_multi))
+
+```
+]
+.pull-right[
+```{r fig.width=4, fig.height=3}
+# Histogram of residuals
+hist(residuals(penguin_lm_multi), 
+     main = "Distribution of Residuals",
+     xlab = "Residuals")
+
+```
+]
+.small[
+**Note**: With large samples, even minor deviations become "significant".
+Focus on visual diagnostics and practical significance.
+]
+---
+
+## Non-parametric alternative to the T-test
+
+If the data are not normally distributed, the [Wilcoxon/Mann-Whitney](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test). Use when: data is skewed, non-normal, or sample size is small.
+
+.pull-left[
+```{r wilcox}
+# Do 2 groups differ?
+# E.g.: flipper length between 2 species---->
+
+# Filter only 2 species for a valid two-group  test
+peng_two <- penguins %>% 
+  filter(species %in% c("Adelie", "Gentoo"))
+
+# Wilcoxon rank-sum test 
+wilcox.test(flipper_length_mm ~ species,
+            data = peng_two)
+
+```
+]
+.pull-right[
+```{r}
+#pairwise comparison between all species
+
+pairwise.wilcox.test(
+  x = penguins$flipper_length_mm,
+  g = penguins$species,
+  p.adjust.method = "BH"
+)
+```
+]
 
 ---
 
@@ -533,31 +553,66 @@ As in the case of ANOVA, check regression assumptions. There are plenty of good 
 
 
 ---
-## Why robust?
 
-You can make your linear regression provide **robust** or clustered **standard errors**. One convenient way is the **`fixest`** package. The syntax is very similar to lm. But we specify fixed effects slightly differently by using the | symbol.
-
-Alternatively, we can use the <span style="background-color: orange">lm_robust()</span> function from the `estimatr` package.
-
-
----
-## Robust Standard Errors
+## Making Predictions 
+.small[Models are useful for prediction! Let's predict body mass for a new penguin:]
 
 ```{r}
-library(fixest)
+# New observation
+new_penguin <- data.frame(
+  flipper_length_mm = 200,
+  bill_length_mm = 45,
+  bill_depth_mm = 15,
+  species = "Gentoo"
+)
 
-model.lm.1.robust<-feols(ai_trust ~ main_branch + participation_frequency + factor(age_group) + 
-                           ai_threat + ai_sentiment | country, # fixed effects per country
-                         vcov = "hetero", # heteroskedastic robust SEs
-                         data = df_filtered)
+# Point prediction
+predict(penguin_lm_multi, newdata = new_penguin)
 
-summary(model.lm.1.robust)
+# With confidence interval (uncertainty in estimate)
+predict(penguin_lm_multi, newdata = new_penguin, 
+        interval = "confidence")
 
 ```
 
+---
+
+## Standardized Effect Sizes (Beta Coefficients)
+To compare effect magnitudes across variables with different scales, use standardized coefficients:
+
+
+```{r}
+library(lm.beta)
+
+# Standardize coefficients
+penguin_lm_beta <- lm.beta(penguin_lm_multi)
+
+# Extract standardized coefficients
+coef(penguin_lm_beta)["flipper_length_mm"]
+coef(penguin_lm_beta)["bill_length_mm"]
+```
+
+.small[**Note**: A 1 SD increase in flipper length →  0.64 SD increase in body mass – the strongest predictor!]
 
 ---
-## Generalized linear regressions 
+## Categorical Predictors
+
+`R` automatically handles categorical variables (factors) by creating dummy variables. 
+
+```{r}
+contrasts(penguins_clean$species)
+
+#model matrix
+head(model.matrix(penguin_lm_multi))
+```
+
+.small[
+- Reference level
+- Other levels
+]
+
+---
+## Generalized linear models
 There are a multitude of other estimators/link functions, so-called **family objects**, e.g., binomial logistic or Poisson regression through the `glm()` function. See `?family` for an overview.
 
 
@@ -568,102 +623,70 @@ There are a multitude of other estimators/link functions, so-called **family obj
 
 ---
 
-## Generalized linear regression
+## GLM with Penguins: Logistic Regression Example
 
-Let's look at the the example of logistic regression.
+.small[Let's predict species (binary: Adelie vs. not) from measurements.]
 
 ```{r log-reg}
-#keep relevant predictors and complete cases
-df_model <- df %>%
-  filter(!is.na(r_used)) %>%
-  select(
-    r_used,
-    main_branch,
-    age_group,
-    education_level,
-    participation_frequency,
-    ai_sentiment,
-    ai_threat,
-    ai_complexity,
-    years_coding,
-    community_belief
-  ) %>%
-  drop_na()
+# Binary outcome
+penguins_binary <- penguins_clean %>%
+  mutate(is_adelie = ifelse(species == "Adelie", 1, 0))
 
-# Fit the logistic regression model
-model_r_used <- glm(
-  r_used ~ .,
-  data = df_model,
-  family = binomial()
+# Logistic regression
+penguin_glm <- glm(
+  is_adelie ~ flipper_length_mm + bill_length_mm + bill_depth_mm,
+  family = binomial(),
+  data = penguins_binary
 )
 
-# View summary
-summary(model_r_used)
+# Odds ratios
+exp(coef(penguin_glm))
 
 ```
 
-.right[`r emo::ji("left_arrow_curving_right")`]
 
 ---
-
-class: middle
-.small[
-```{r ref.label = "log-reg", echo = FALSE}
-
-```
-]
-
----
-
 
 ## Assessing model quality
 
 The [`performance` package](https://easystats.github.io/performance/) that is that is part of the [`easystats` collection of packages](https://easystats.github.io/easystats/) offers some functions for assessing model quality, including different types of R². A commonly used metric for logistic regression models, e.g., is Nagelkerke's R².
 
-
-*Note*: The `performance` package also includes several helpful functions for model diagnostics.
-
 ---
 
-## Model selection
+## Model Comparison with AIC
 
-Apply stepwise AIC to remove/ add predictors.
+Compare nested models using Akaike Information Criterion – balances fit and complexity.
 
-```{r probit-reg, eval = FALSE}
-fit_log1 <- glm(r_used ~ main_branch,
-                family = binomial, data = df_model)
+```{r probit-reg}
+# Simple model
+model1 <- lm(body_mass_g ~ flipper_length_mm, 
+             data = penguins_clean)
 
-fit_log2 <- glm(r_used ~ main_branch +
-                  age_group +
-                  ai_sentiment,
-                  family = binomial, data = df_model)
+# Complex model
+model2 <- lm(body_mass_g ~ flipper_length_mm + bill_length_mm + species, 
+             data = penguins_clean)
 
-anova(fit_log1, fit_log2, test = "Chisq")
+# Compare
+AIC(model1, model2)
+
 
 ```
 
-.right[`r emo::ji("left_arrow_curving_right")`]
-
----
-
-class:middle
 .small[
-```{r ref.label = "probit-reg", echo = FALSE, eval=TRUE}
-```
-]
+Lower AIC = better model. The complex model is preferred here.]
+
 
 ---
-## Compare models step-wise using AIC 
+## Stepwise Selection
 
 Start with a simple model and stepwise remove possible predictors
 
-```{r stepwise}
-fit_log_step = step(glm(r_used ~ main_branch +
-                          age_group +
-                          ai_complexity +
-                          ai_threat, 
-                          family = binomial, data = df_model, trace = 0))
-fit_log_step
+```{r stepwise, eval=FALSE}
+# Stepwise AIC based selection
+
+step <- step(model1, scope = ~ flipper_length_mm + bill_length_mm + species, trace = FALSE)
+
+summary(step)
 ```
 
 .right[`r emo::ji("left_arrow_curving_right")`]
@@ -681,7 +704,7 @@ class:middle
 
 ## Comparing model performance
 
-The `performance` package we have previously used for calculating Nagelkerke's R² for our logistic regression model also provides a handy function for comparing model performance.
+The `performance` package we have previously used for calculating Nagelkerke's R² for our logistic regression model also provides a function for comparing model performance.
 
 
 ---
@@ -699,53 +722,7 @@ While it is (still) common practice to run regressions, search for 'significant'
 
 ---
 
-## Accessing model results in `base R`
-
-Regression results are a specific type/class of objects in `R`. You can use the `str()` function to get an overview of the whole structure of the object (it's a list of different information). For starters, we may want to see what the first level of this list may provide by asking for the names of the included pieces of information:
-
-```{r names-lm}
-names(fit_log_step)
-```
-
----
-
-## Accessing coefficients
-
-We can access the coefficients from our model as follows:
-
-```{r coef-lm}
-fit_log_step$coefficients
-```
-
----
-
-## Accessing standard errors
-
-`lm` objects are a little bit cumbersome to use as the information is deeply nested within the object. If you want to extract the standard errors, e.g., you can do so as follows:
-
-```{r se-lm}
-summary(fit_log_step)$coefficients[,2]
-```
-
----
-
-## Accessing confidence intervals
-
-The standard `summary()` doesn't supply confidence intervals. We can use the `confint()` command to produce them. For example, for the logistic regression:
-
-```{r confint-lm, eval=FALSE}
-confint(fit_log_step)
-
-#- for odds ratio (OR) from log-odds
-# - i.e. OR < 1 predictor is associated with lower odds of the outcome
-exp(confint(fit_log_step))
-
-```
-
----
-
-
-## Regression tables
+## Reporting Results
 
 As we have seen in the session on *Exploratory Data Analysis*, there are different options for creating tables as output in `R`:  [`stargazer`](https://cran.r-project.org/web/packages/stargazer/index.html) and [`gtsummary`](http://www.danieldsjoberg.com/gtsummary/)
 
@@ -755,20 +732,12 @@ As we have seen in the session on *Exploratory Data Analysis*, there are differe
 
 ```{r stargazer, eval = FALSE}
 library(stargazer)
-
 stargazer(
-  simple_linear_model, 
+  penguin_lm_multi, 
   type = "text",        # For console output; use "html" or "latex" for other formats
   title = "Regression Results",
-  dep.var.labels = c("AI Trust"),
-  covariate.labels = c(
-    "Main Branch", 
-    "Participation Frequency", 
-    "Years Coding"
-  ),
-  out.header = FALSE,    # Exclude header metadata if outputting to file
-  digits = 3             # Number of decimal places
-)
+  out.header = FALSE,    
+  digits = 3             
 
 ```
 
@@ -777,10 +746,184 @@ stargazer(
 ---
 
 class: center, middle
-.ssmall[
+.small[
 ```{r ref.label = "stargazer", echo = FALSE}
 ```
 ]
+
+---
+
+
+## Coefficient Plots (Odds Ratios)
+
+.small[Create coefficient plot]
+
+.pull-left[
+```{r coeffic, fig.width= 5, fig.height=4, eval=FALSE}
+
+library(sjPlot)
+
+# Plot odds ratios with 95% CI
+plot_model(
+  penguin_glm,
+  show.values = TRUE,
+  value.offset = .3,
+  transform = "exp",     # transforms log-odds → odds ratios
+  title = "Odds Ratios for Predicting Adelie Species"
+)
+
+```
+]
+
+.pull-lright[
+
+```{r ref.label = "coeffic", echo = FALSE, fig.width=5, fig.height=6}
+```
+
+]
+
+---
+## Parameters coefficient plot
+
+```{r fig.width= 5, fig.height=4}
+
+library(parameters)
+
+model_parameters(penguin_glm) %>% 
+  plot()+
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+---
+
+## Raw Coefficients (Log-Odds)
+```{r fig.width=5, fig.height=6}
+
+plot_model(
+  penguin_glm,
+  show.values = TRUE,
+  value.offset = .3,
+  transform = NULL,      # keep log-odds
+  title = "Log-Odds Coefficients (Logistic Regression)"
+)
+
+```
+
+
+---
+
+## sjPlot: Marginal Effects Plot
+
+```{r fig.width=5, fig.height=6}
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = "flipper_length_mm",
+  title = "Predicted Probability of Adelie vs. Flipper Length"
+)
+
+```
+
+---
+
+## You can add multiple predictors
+
+```{r fig.width=5, fig.height=6}
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = c("flipper_length_mm", "bill_length_mm"),
+  title = "Marginal Effects: Interaction Surface"
+)
+
+```
+
+
+---
+
+## Prediction plots vs Regressions coefficients
+
+- Regression coefficients are sometimes a bit hard to read
+
+    -they are based on the scale of the independent variable when unstandardized
+    -it is ambiguous what they actually mean substantially
+    -for example, is a coefficient of .2 or .05 (practically) meaningful or not?
+
+- Predictions are a solution
+
+    - they basically draw the regression line into the scatter plot of the Y and X variables
+    - we can read at which level of X which value of Y is expected
+
+---
+
+## Predictions (sjPlot)
+
+```{r fig.width= 7, fig.height=5}
+
+
+plot_model(
+  penguin_glm,
+  type = "pred",
+  terms = c("bill_depth_mm","bill_length_mm"),
+  title = "Predicted Probability of Adelie by Bill Depth and Length"
+)
+
+
+```
+
+---
+
+## Customized ggplot
+.pull-left[
+```{r fig.width= 4, fig.height=5}
+library(broom)
+library(ggplot2)
+library(dplyr)
+
+coef_df <- tidy(penguin_glm, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = reorder(term, estimate))
+
+coef_p <- ggplot(coef_df, aes(x = term, y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = .15, linewidth = .8) +
+  labs(title = "Logistic Regression Coefficient Plot",
+       x = "Predictor",
+       y = "Estimate (log-odds)") +
+  coord_flip() +
+  theme_minimal()
+
+
+```
+]
+
+
+.pull-right[
+```{r echo=FALSE, fig.width=5, fig.height=6}
+coef_p
+```
+]
+
+
+---
+
+## Summary Table with sjPlot
+
+
+```{r}
+tab_model(
+  penguin_glm,
+  show.ci = TRUE,
+  show.se = TRUE,
+  show.aic = TRUE,
+  transform = "exp",
+  dv.labels = "Predicting Adelie Species"
+)
+
+```
 
 
 ---
@@ -788,20 +931,43 @@ class: center, middle
 ## Tidy models with `broom`
 
 The [`broom`](https://broom.tidymodels.org/) package provides only 3 but very powerful main functions:
-- `tidy()`: creates a `tibble` from your model
+- `tidy()`: creates a `tibble` from your model (coefficients)
 - `glance()`: information about your model as `tibble` ('model fit')
-- `augment()`: adds information, e.g., individual fitted values to your data
+- `augment()`: adds observ. information, e.g., individual fitted values to your data
 
 *Note*: With `broom` you can also create a standardized output of other types of models, such as Latent Class Analysis (LCA) (with the package [`poLCA`](https://cran.r-project.org/web/packages/poLCA/index.html)). 
+
+---
+
+## Conflicts
+
+```{r}
+# See which packages conflict
+conflicts(detail = TRUE)
+
+# Look specifically for tidy conflicts
+conflicts(detail = TRUE)$`package:broom`
+
+```
+
+Always load broom after packages like tidyverse to avoid conflicts
 
 ---
 
 ## `tidy()`
 
 ```{r tidy}
-library(broom)
+# Load in THIS order
+library(tidyverse)  
+library(palmerpenguins)
+library(broom)      
+library(parameters)
 
-tidy(simple_linear_model)
+
+
+tidy_penguin <- tidy(penguin_lm_multi)
+print(tidy_penguin)
+
 ```
 
 ---
@@ -809,7 +975,10 @@ tidy(simple_linear_model)
 ## `glance()`
 
 ```{r glance}
-glance(simple_linear_model)
+
+# glance() - model fit
+glance(penguin_lm_multi)
+
 ```
 
 ---
@@ -817,8 +986,53 @@ glance(simple_linear_model)
 ## `augment()`
 
 ```{r augment}
-augment(simple_linear_model)
+
+# augment() - diagnostics
+augment_penguin <- augment(penguin_lm_multi)
+head(augment_penguin)
+
 ```
+
+---
+
+## From Model to Diagnostics
+
+Combine all three `broom` functions
+
+```{r broom, eval=FALSE}
+# 1. Get coefficients (tidy)
+coef_table <- tidy(penguin_lm_multi, conf.int = TRUE)
+
+# 2. Get model fit (glance)
+fit_stats <- glance(penguin_lm_multi)
+
+# 3. Get diagnostics (augment)
+diag_data <- augment(penguin_lm_multi) %>%
+  mutate(
+    outlier = abs(.std.resid) > 2,
+    species = penguins_clean$species  # Add back categorical variable
+  )
+
+# 4. Visualize residuals by species
+library(ggplot2)
+ggplot(diag_data, aes(x = species, y = .resid, fill = outlier)) +
+  geom_boxplot() +
+  labs(title = "Residuals by Species",
+       subtitle = "Outliers highlighted in red",
+       x = "Species",
+       y = "Residuals") +
+  theme_minimal()
+```
+
+---
+class: center, middle
+.small[
+```{r}
+
+```{r ref.label = "broom", echo = FALSE}
+```
+
+]
 
 ---
 
@@ -850,116 +1064,8 @@ class: center, middle
 
 ## [Solutions](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/983625a7d096079e0598f2d60ca1281c757d4659/solutions/Exercise_4_1_3_Regression_Reporting.html)
 
----
-## Coefficient Plots (parameters)
-
-Create coefficient plot
-```{r fig.width= 5, fig.height=4}
-library(parameters)
-
-model_parameters(fit_log2) %>% 
-  plot()
-```
-
----
-## ggplot2-based coefficient plot
-
-```{r fig.width= 5, fig.height=4}
-
-model_parameters(fit_log2) %>% 
-  plot() +
-  scale_y_discrete(
-    labels = c(  # reversed order
-      "Sentiment on AI", "Age", "Professional stage"
-    )
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
 
 
-```
-
----
-
-## Prediction plots vs Regressions coefficients
-
-- Regression coefficients are sometimes a bit hard to read
-
-    -they are based on the scale of the independent variable when unstandardized
-    -it is ambiguous what they actually mean substantially
-    -for example, is a coefficient of .2 or .05 (practically) meaningful or not?
-
-- Predictions are a solution
-
-    - they basically draw the regression line into the scatter plot of the Y and X variables
-    - we can read at which level of X which value of Y is expected
-
----
-
-## Predictions (sjPlot)
-
-```{r fig.width= 7, fig.height=5}
-library(sjPlot)
-
-fit_log2 %>% 
-  plot_model(
-    type = "pred", 
-    terms = "age_group"
-  )
-
-```
-
----
-
-## Customized sjplots
-
-```{r fig.width= 6, fig.height=4}
-library(sjPlot)
-
-fit_log2 %>% 
-  plot_model(
-    type = "pred", 
-    terms = "age_group"
-  )+
-  xlab("Age") +
-  ylab("R environment used") +
-  ggtitle("Logistic Model") +
-  theme_bw()
-
-```
-
----
-
-## Interaction effects
-
-Does age moderate the relationship between r used and main_branch?
-
-```{r interaction model}
-
-fit_log2_interaction <- glm(r_used ~ main_branch:age_group +
-                  ai_sentiment,
-                  family = binomial, data = df_model)
-
-model_parameters(fit_log2_interaction)
-```
-
----
-
-
-## Plotting interaction effects
-
-Interaction parameters are difficult to interpret. Hence, plotting the regression parameters with `sjPlot`
-
-```{r fig.width= 5, fig.height=4}
-
-fit_log2_interaction %>% 
-  plot_model(type = "int") +
-  xlab("Age") +
-  ylab("'R used") +
-  ggtitle("Interaction Model") +
-  theme_bw()
-
-```
 
 
 

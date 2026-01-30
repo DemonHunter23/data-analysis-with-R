@@ -3,7 +3,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Excursion Shiny App and LLMs"
 author: "otello"
-date: "2025-06-24"
+date: "2025-11-21"
 presenter: Veronika
 output: 
   html_document:
