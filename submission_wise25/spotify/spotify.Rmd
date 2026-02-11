@@ -1,0 +1,501 @@
+---
+title: "An analysis of music on Spotify."
+author: "Filipe Jung, Adrian Keller"
+date: "2026-01-31"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The Data Set
+
+The data we are using is from TidyTuesday. The data includes various statistics on 32833 Spotify songs (e.g. date, genre, popularity, key, energy, album, etc.). Our goal is to find interesting correlations on how the different statistics relate, especially within and between certain genres. There is no missing data, but certain data quirks have to be considered when looking at statistics. The list of different columns can be seen in the list below
+
+```{r cars, include=FALSE}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(broom)
+library(plotly)
+spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2020/2020-01-21/spotify_songs.csv')
+```
+
+```{r data headers, echo=FALSE}
+names(spotify_songs)
+```
+
+## Distribution of popularity
+
+```{r pop plot, echo=FALSE}
+ggplot(spotify_songs,aes(x=track_popularity))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Popularity has a value between 0 and 100. It seems that most of the songs have a popularity following a normal distribution around 55 with a large peak close to 0.
+
+## Distribution of genres
+
+Comparing the popularity for different genres
+
+```{r genre, echo=FALSE}
+spotify_songs %>%
+  group_by(playlist_genre) %>%
+  summarise(mean_popularity = mean(track_popularity, na.rm = TRUE)) %>%
+  ggplot(aes(x = playlist_genre, y = mean_popularity)) +
+  geom_col(alpha = 0.4, fill = "#05595b") +
+  theme_bw() +
+  labs(
+    x = "Genre",
+    y = "Mean Track Popularity",
+    title = "Average Track Popularity by Genre"
+  )
+```
+
+## Distribution of danceability
+
+```{r pop danceability, echo=FALSE}
+ggplot(spotify_songs,aes(x=danceability))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Danceability has a value between 0 and 1. The plot shows the distribution of danceability. It seems to follow a beta distribution with a maximum around 0.7.
+
+## Distribution of energy
+
+```{r pop energy, echo=FALSE}
+ggplot(spotify_songs,aes(x=energy))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Energy has a value between 0 and 1. The plot shows the distribution of danceability. It seems to follow a beta distribution with a maximum around 0.8.
+
+## Distribution of key
+
+```{r pop key, echo=FALSE}
+ggplot(spotify_songs,aes(x=key))+geom_histogram(binwidth = 1, alpha=0.4,fill="#05595b")+theme_bw()
+```
+
+The key has a value between 0 (C) and 11 (H). There is a maximum at C# and minimum at D#.
+
+## Distribution of loudness
+
+```{r pop loudness, echo=FALSE}
+ggplot(spotify_songs,aes(x=loudness))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Loudness has a value with a maximum at 0. It seems to follow a beta distribution with a maximum around -5.
+
+## Distribution of speechiness
+
+```{r pop speechiness, echo=FALSE}
+ggplot(spotify_songs,aes(x=speechiness))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Speechiness has a value between 0 and 1. It seems to follow a beta distribution with a maximum around 0.04.
+
+## Distribution of acousticness
+
+```{r pop acousticness, echo=FALSE}
+ggplot(spotify_songs,aes(x=acousticness))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Acousticness has a value between 0 and 1. It seems to follow a beta distribution with a maximum around 0.02.
+
+## Distribution of liveness
+
+```{r pop liveness, echo=FALSE}
+ggplot(spotify_songs,aes(x=liveness))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Liveness has a value between 0 and 1. It seems to follow a beta distribution with a maximum around 0.1.
+
+## Distribution of valence
+
+```{r pop valence, echo=FALSE}
+ggplot(spotify_songs,aes(x=valence))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Valence has a value between 0 and 1. It seems to follow a normal distribution with a maximum around 0.5.
+
+
+## Distribution of tempo
+
+```{r pop tempo, echo=FALSE}
+ggplot(spotify_songs,aes(x=tempo))+geom_histogram(binwidth = 1,fill="#05595b",alpha=0.4)+theme_bw()
+```
+
+Tempo has a value mostly between 50 and 220. It has a large peak at 130.
+
+## Distribution of instrumentalness
+
+```{r pop instrumentalness, echo=FALSE}
+
+ggplot(spotify_songs,aes(x=instrumentalness))+geom_density(fill="#05595b",alpha=0.4,colour=NA)+theme_bw()
+```
+
+Instrumentalness has a value mostly between 0 and 1 It has a large peak around 0.
+
+# Factors for popularity
+
+After having a first look at our data set, we now want to find factors for popularity. To do this we will use correlation plots between popularity and other factors. When looking a these plots we should have in mind, that popularity has mostly a normal distribution around around 55 with a large peak close to 0.
+
+## Correlation of popularity and danceability
+
+```{r pop correlation danceability, echo=FALSE}
+ggplot(spotify_songs,aes(x=danceability,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+Looking at the plot you can see the density of track popularity on the vertical axis and the density of danceability on the vertical axis, but no sign for any correlation between both variables.
+
+## Correlation of popularity and energy
+
+```{r pop correlation energy, echo=FALSE}
+ggplot(spotify_songs,aes(x=energy,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+The pattern on this correlation graph is a bit odd, but you can still recognize the density of track popularity on the y-axis and the density of energy on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and key
+
+```{r pop correlation key, echo=FALSE}
+ggplot(spotify_songs,aes(x=key,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+This plot is particularly odd, but knowing the histogram of keys it is not surprising. There is no correlation between key and track_popularity.
+
+## Correlation of popularity and loudness
+
+```{r pop correlation loudness, echo=FALSE}
+ggplot(spotify_songs,aes(x=loudness,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+When you look at the plot, you can recognize the density of track popularity on the y-axis and the density of danceability on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and speechiness
+
+```{r pop correlation speechiness, echo=FALSE}
+ggplot(spotify_songs,aes(x=speechiness,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+When you look at the plot, you can recognize the density of track popularity on the y-axis and the density of danceability on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and acousticness
+
+```{r pop correlation acousticness, echo=FALSE}
+ggplot(spotify_songs,aes(x=acousticness,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+The pattern on this correlation graph is odd. It shows no correlation between both variables.
+
+## Correlation of popularity and liveness
+
+```{r pop correlation liveness, echo=FALSE}
+ggplot(spotify_songs,aes(x=liveness,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+When you look at the plot, you can recognize the density of track popularity on the y-axis and the density of liveness on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and valence
+
+```{r pop correlation valence, echo=FALSE}
+ggplot(spotify_songs,aes(x=valence,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+The pattern on this correlation graph has a small oddity, but you can still recognize the density of track popularity on the y-axis and the density of valence on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and tempo
+
+```{r pop correlation tempo, echo=FALSE}
+ggplot(spotify_songs,aes(x=tempo,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+When you look at the plot, you can recognize the density of track popularity on the y-axis and the density of tempo on the x-axis. There is no correlation between both variables.
+
+## Correlation of popularity and instrumentalness
+
+```{r pop correlation instrumentalness, echo=FALSE}
+ggplot(spotify_songs,aes(x=instrumentalness,y=track_popularity))+stat_density_2d(aes(fill=after_stat(level)), alpha=0.4,fill="#05595b",geom="polygon")+theme_bw()
+```
+
+The pattern on this correlation graph is odd, but you can still recognize the debsity of instrimentalness. It shows no correlation between both variables.
+
+## Summary
+
+```{r show ridgeplot, echo=FALSE}
+library(tidyverse)
+
+spotify_songs_stats = pivot_longer(
+  spotify_songs %>% select(track_popularity, danceability, energy, speechiness, acousticness, instrumentalness, liveness, valence),
+  cols = danceability:valence, names_to = "value_name", values_to = "value"
+)
+
+library(ggridges)
+
+ggplot(spotify_songs_stats, aes(track_popularity, y=fct_reorder(value_name, value), group=value_name, height=value)) +
+  geom_ridgeline(
+    alpha = 0.4,
+    fill = "#05595b",
+    color = "white"
+  )+
+  labs(title = "", x = "Popularity", y = "")
+  
+```
+
+The plot summarizes what we have seen on the other plots. There is no correlation of any analyzed factor with popularity.
+
+# Differences between genres
+
+## Overview
+
+Now we want to look at the differences for each genre within our data set. First, we want to get an overview of the distributions for numeric properties per Genre and compare them. In numeric properties, key and mode are excluded, as they are numerical representations of categorizing the song (e.g. key value one represents the C key and mode can be one or zero which represent major and minor mode respectively). This will be visualized by a table containing the mean value of the numeric properties per Genre and a box plot showing the distribution, mean and median of the songs within a genre for every numeric property.
+
+```{r show genre distribution, echo=TRUE, fig.width = 15, fig.height=12}
+# Only select numeric properties except key and mode
+numeric_properties <- spotify_songs %>%
+  select(playlist_genre, where(is.numeric)) %>%
+  select(-key, -mode)
+
+# Generate table with means of all selected properties for each genre
+genre_means <- numeric_properties%>%
+  group_by(playlist_genre) %>%
+  summarise(across(everything(), \(numeric_properties) mean(numeric_properties, na.rm = TRUE)))
+
+genre_means
+
+# Generate plot data
+plot_data <- spotify_songs %>%
+  select(playlist_genre, names(numeric_properties)) %>%
+  pivot_longer(
+    cols = -playlist_genre,
+    names_to = "feature",
+    values_to = "value"
+  )
+
+# Generate box plot showing distribution of all properties for each genre
+ggplot(plot_data, aes(x = playlist_genre, y = value, fill = playlist_genre)) +
+  geom_boxplot(outlier.alpha = 0.15) +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 21,
+    size = 2,
+    fill = "white",
+    color = "black"
+  ) +
+  facet_wrap(~ feature, scales = "free_y", ncol = 4) +
+  labs(
+    title = "Song property Distributions by Genre",
+    x = "Genre",
+    y = "Property Value"
+  ) +
+  theme_minimal(base_size = 18)
+  
+```
+
+Within the distribution, the horizontal lines within the box represent the median while the white dots shows the mean. Higher discrepancies of mean and median show how much "outliers" impact the data, for example for EDM the median of the instrumentalness is close to zero while the mean is closer to 0.25. This is likely due to the fact that a large portion of EDM songs have an instrumentalness value close to 1.
+
+Analyzing the visualizations allows us to already start categorizing the genres. Starting with EDM, we can see that this genre tends to be highly energetic, loud, high tempo and low popularity, although the popularity might come from the songs chosen to be in this data set. Interestingly, the valence of EDM is much lower compared to other genres. The acousticness is very low for EDM songs which can be expected as EDM songs are usually very synth heavy.
+
+Latin songs have high valence and danceability. Comparing with the genre pop, we see that the distributions are often very similar which (as we will see later) will make it difficult distinguishing both genres, given the values. The only major difference for pop is that its valence, speechiness and song durations are lower on average.
+
+R&B songs tend to have low energy, loudness and tempo. Similar to how EDM has high energy, loudness and tempo, this would suggest that these three properties are correlated to some extent.
+
+Rap songs are categorized by high acousticness, danceability and speechiness with somewhat low energy compared to other genres except R&B.
+
+Rock songs show extreme differences in danceability as they are much less danceable than other genres. Although personally, we find that this is very subjective as you can see enough people dancing at rock concerts ;). Furthermore, rock displays high energy, low acousticness, speechiness, loudness and long durations. This shows that EDM and rock have a lot of similarities, which might have to do with the fact that both genres focus on high energetic and electrical segments.
+
+## Differences between major and minor mode
+
+What we found to be somewhat surprising, is that rock has similar valence to other genres. we expected that rock would show similar valence values to EDM. To further analyze this property, my first thought was to take a closer look at the modes for each genre and compare them, as minor songs are usually associated with a sadder and darker tone compared to major.
+
+```{r show mode distribution, echo=TRUE}
+# Plot proportion of mode by genre
+spotify_songs %>%
+  mutate(mode_label = ifelse(mode == 1, "Major", "Minor")) %>%
+  group_by(playlist_genre, mode_label) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(playlist_genre) %>%
+  mutate(prop = count / sum(count)) %>%
+  ggplot(aes(x = playlist_genre, y = prop, fill = mode_label)) +
+  geom_col() +
+  labs(
+    title = "Proportion of Mode by Genre",
+    x = "Genre",
+    y = "Proportion of Songs",
+    fill = "Mode"
+  ) +
+  scale_fill_manual(
+    values = c("Major" = "blue", "Minor" = "red"))
+  
+```
+
+We can see that within the rock genre, there are much more major songs than minor and also higher rate of major songs compared to other genres. This could explain why my expectations were not met. To further see this, we plot the distribution of the valence per mode for every genre.
+
+```{r show valence distribution per mode, echo=TRUE}
+# Plot valence violin distribution by genre and mode
+spotify_songs %>%
+  mutate(
+    mode_label = ifelse(mode == 1, "Major", "Minor")
+  ) %>%
+  ggplot(aes(x = mode_label, y = valence, fill = mode_label)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +
+  geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.8) +
+  stat_summary(
+    fun = median,
+    geom = "point",
+    shape = 23,
+    size = 2.5,
+    fill = "black",
+    color = "black"
+  ) +
+  facet_wrap(~ playlist_genre, ncol = 3) +
+  scale_fill_manual(
+    values = c("Major" = "blue", "Minor" = "red")
+  ) +
+  labs(
+    title = "Valence Distributions by Genre and Mode",
+    x = "Mode",
+    y = "Valence",
+    fill = "Mode"
+  ) +
+  theme_minimal(base_size = 14)
+  
+```
+
+Looking at this distribution, we can see that for rock, major songs tend to have higher valence than minor songs as expected, although even for minor rock songs, the valence is still much higher than for EDM songs. Interestingly, the valence is not affected by mode for other genres, even showing slightly higher valence for minor songs within R&B.
+
+## Correlation of energy and danceability
+
+Now we wanted to explore, how energy and danceability correlate within each genre and if the correlation changes for different genres.
+
+```{r show energy danceability correlation, echo=TRUE, fig.width = 15, fig.height=12}
+# Compute regression coefficients per genre
+regressions <- spotify_songs %>%
+  group_by(playlist_genre) %>%
+  do({
+    model <- lm(danceability ~ energy, data = .)
+    tibble(
+      intercept = coef(model)[1],
+      slope = coef(model)[2],
+      r2 = summary(model)$r.squared
+    )
+  }) %>%
+  ungroup() %>%
+  mutate(
+    label = paste0(
+      "danceability = ",
+      round(intercept, 3), " + ",
+      round(slope, 3), " * energy\n",
+      "R^2 = ", round(r2, 3)
+    )
+  )
+
+# Create the plot
+spotify_songs %>%
+  ggplot(aes(x = energy, y = danceability)) +
+  geom_point(aes(color = playlist_genre), alpha = 0.3) +
+  geom_smooth(formula = y ~ x, method = "lm", se = FALSE, color = "black", linewidth = 1) +
+  geom_text(
+    data = regressions,
+    aes(label = label),
+    x = 0.05, y = 0.1,     # adjust position
+    hjust = 0, vjust = 1,
+    color = "black",
+    size = 5
+  ) +
+  facet_wrap(~ playlist_genre) +
+  labs(
+    title = "Energy vs Danceability per Genre Linear Regression",
+    x = "Energy",
+    y = "Danceability",
+    color = "Genre"
+  ) +
+  theme_minimal(base_size = 18)
+
+```
+
+As we can see, energy and danceability tend to correlate positively for latin and R&B songs and negatively for EDM, rap and rock. Pop doesn't seem to have a correlation between both, showing a relatively constant spread.
+
+## Clustering the data and comparing to genre
+
+From all these differences, we wanted to find out if the properties of the genres are different enough, such that when you categorize the songs according to their numeric property values without knowing the genre, the distribution of genre within each category shows a clear preference for a certain genre. Of course it would be optimal if each category can be associated with a different genre. To see this, we will perform a k-means clustering calculation to our data and look at the distribution of genres within each cluster. Here we use all numeric properties except popularity.
+
+```{r show clustering matching genre, echo=TRUE}
+# Selecting all 
+cluster_input <- spotify_songs %>%
+  select(playlist_genre, where(is.numeric)) %>%
+  select(-track_popularity)
+
+scaled_cluster_input <- scale(cluster_input %>% select(-playlist_genre))
+
+set.seed(123)
+
+k <- 6  # number of clusters same as genre
+km <- kmeans(scaled_cluster_input, centers = k, nstart = 25)
+
+contingency_table <- table(
+  Cluster = km$cluster,
+  Genre   = cluster_input$playlist_genre
+)
+
+contingency_table_df <- as.data.frame.matrix(contingency_table)
+
+contingency_table_df
+```
+
+As we can see, there does seem to be a large spread in genre count for some clusters, while others have a distinct genre "peak". To look at this closer, we visualize the table as a heatmap and normalize along each genre to show the proportions of cluster counts within each genre.
+
+```{r plot normalized clustering matching genre, echo=TRUE}
+contingency_df <- as.data.frame(contingency_table)
+
+contingency_df %>%
+  group_by(Genre) %>%
+  mutate(Proportion = Freq / sum(Freq)) %>%
+  ggplot(aes(x = Genre, y = Cluster, fill = Proportion)) +
+  geom_tile(color = "white") +
+  geom_text(
+    aes(label = round(Proportion, 2)),
+    size = 5,
+    color = "black"
+  ) +
+  scale_fill_gradient(low = "white", high = "green") +
+  labs(
+    title = "Normalized Genre distribution across Clusters",
+    x = "Genre",
+    y = "Cluster",
+    fill = "Proportion"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+About 40% of songs of the genres rock, rap and latin are put within a certain cluster (Rock -> Cluster 3, Rap -> Cluster 2, latin -> Cluster 6). However the distribution of genres for clusters 5 and 6 are very similar except for rock, showing the similarities in property for the genres. Furthermore we can see that the distribution for the genres pop and latin are very similar. This can be accounted to the similarities in properties for both genres as was discussed in the overview. 
+
+Summarizing, given the properties of different kinds of songs, it is not accurately possible to distinguish them by genre using these properties. This is most likely because the properties of songs within a genre are distributed enough, so that their properties blend in within other genres and different genres display very similar properties. Also, certain songs are not easy to locate within a certain genre and blend in with different genres. This could be further analyzed by looking at certain subgenres within these genres.
+
+# Conclusion
+
+We were unable to identify factors for the popularity of music, perhaps because musical taste is as diverse as people themselves.
+
+Furthermore, the differences between genres do not seem to be clearly defined, as the categorization of songs depending on their features do not seem to align well with the genres of the songs. Although certain quantitative differences and similarities can be found between genres, some more surprising like the similarity of EDM and rock music, the songs of a single genre can themselves exhibit differences similar to the differences between genres, showcasing that the categorization by genre is not unique.
+
+# References
+
+```{r references, echo=FALSE}
+library(report)
+
+report(sessionInfo())
+```
