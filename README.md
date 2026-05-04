@@ -35,7 +35,7 @@ By the end of the course participants should be:
 | **Friday** | **16:10 - 17:00**  | **Tidy Tuesday -- Group Work**     |
 
 ---
-
+<!--
 ### Day 2: [21-11]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
@@ -73,7 +73,7 @@ By the end of the course participants should be:
 
 
 
-
+-->
 
 
 
