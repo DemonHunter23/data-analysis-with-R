@@ -21,7 +21,7 @@ By the end of the course participants should be:
 # Course Schedule
 
 
-### Day 1: [07-11]
+### Day 1: [08-05]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
 | **Friday** | **09:00 - 10:00** | **[Onboarding & Getting Started with R](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1b9c66fcea9c93f1a45dad16337f0593e7933b5d/slides/1_1_Getting_Started.html)** |
