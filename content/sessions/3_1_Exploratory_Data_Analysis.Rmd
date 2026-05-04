@@ -2,7 +2,7 @@
 title: " Data Literacy: Introduction to R "
 subtitle: "Exploratory Data Analysis"
 author: "Veronika Batzdorfer"
-date: "2025-11-07"
+date: "2026-05-08"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
