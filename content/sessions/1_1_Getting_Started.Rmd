@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "101 Starting with R"
 author: "Veronika Batzdorfer"
-date: "2025-11-07"
+date: "2026-05-08"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -49,11 +49,11 @@ woRkshoptools::include_picture("./interest.png")
 .pull-right[
 .small[
 
-- ITZ (Institut für Technikzukünfte), working at the EU project SoMe4Dem (Social Media for Democracy)
+- ITZ (Institut für Technikzukünfte), 
 
 - Passionate about R, data visualization, and social science methods
 
-- Curious about how technology shapes democracy
+- Curious about platform moderation
 
 <br>
 
@@ -111,14 +111,14 @@ course_day2
 |------------------|------------------|
 | **Active participation** | Engage actively in discussions and coding sessions. |
 | **Create your own group challenge** | Develop your **own group challenge** (2–3 people) using [Tidy Tuesday data](https://github.com/rfordatascience/tidytuesday). |
-| **Submission** |**R Markdown (.Rmd)** and the **HTML** file to the **GitHub repository** under the folder `submissions_wise25`. |
+| **Submission** |**R Markdown (.Rmd)** and the **HTML** file to the **GitHub repository** under the folder `submissions_sose26`. |
 | **Documentation** | Document the **entire research cycle**: clear research question → data wrangling → exploratory analysis → visualization. |
 
 
 ---
 ## Submission
 
-- Submit by **31st January 2026** on the Github Repo and by Email 
+- Submit by **31st July 2026** on the Github Repo and by Email 
 
 
 ---
@@ -723,6 +723,20 @@ woRkshoptools::include_picture("./rstudio_general_settings_highlighted.png")
 
 ---
 
+## Reproducible Research
+
+|               | **Same analysis** | **Different analysis** |
+|---------------|------------------|------------------------|
+| **Same data** | Reproducible     | Robust                 |
+| **New data**  | Replicable       | Generalisable          |
+
+Research becomes more trustworthy when findings remain consistent across data and analytical choices.
+
+According to [*The Turing Way*](https://book.the-turing-way.org/reproducible-research/overview/overview-definitions/#rr-overview-definitions), reproducible research means that others can independently recreate results using the **same data** and **same analysis workflow**.
+
+
+---
+
 ## Basic workflow and setup recommendations
 
 - use `R` scripts to store your code
@@ -731,7 +745,83 @@ woRkshoptools::include_picture("./rstudio_general_settings_highlighted.png")
 
 - (try to) use relative file paths in your scripts
 
-- eventually consider adopting a [project-oriented workflow](https://rstats.wtf/project-oriented-workflow.html) 
+- eventually consider adopting a project-oriented workflow
+
+---
+
+## Project-Oriented Workflow
+
+A **project-oriented workflow** keeps code, data, and outputs together in one self-contained project folder.
+
+**Why**
+- file paths work on different computers
+- analyses become easier to rerun
+- collaboration is simpler
+- fewer “where did that file come from?” problems
+
+
+---
+
+
+## Project-Oriented Workflow
+
+```text
+my-project/
+│
+├── data/
+│   └── survey.csv
+│
+├── scripts/
+│   └── analysis.R
+│
+├── figures/
+│   └── plot.png
+│
+├── results/
+│   └── summary.csv
+│
+└── report.Rmd
+```
+
+`data/survey.csv` → `scripts/analysis.R` → `results/summary.csv` → `report.Rmd`
+
+- **Everything lives in one place**
+- **Relative paths make the project portable**
+- **Anyone can open the folder and rerun the analysis**
+
+---
+## Coding for Reproducible Science
+
+```text
+raw data
+   │
+   ▼
+read → clean → analyse → visualise → report
+```
+
+### What to learn in code
+
+- **Write reusable functions** instead of repeating code
+- **Use clear object names** that describe what data contain
+- **Avoid manual copy–paste** — automate repeated steps
+- **Keep one script per task** (import, cleaning, analysis, plots)
+- **Document assumptions** with short comments
+- **Check results** with simple summaries or tests
+
+
+---
+
+## Coding for Reproducible Science
+
+
+### Key coding habits
+
+- Break workflow into **clear steps**
+- Each step has a **single responsibility**
+- Prefer **small reusable functions**
+- Keep outputs tied to inputs (no manual edits)
+
+
 
 ---
 
@@ -762,23 +852,6 @@ knitr::include_graphics("https://github.com/allisonhorst/stats-illustrations/blo
 <small><small>GIF by [Allison Horst](https://github.com/allisonhorst/stats-illustrations)</small></small>
 ]
 
----
-## Some house keeping
-
-
-```{r eval=F}
-
-
-testvar     # not ideal
-
-01.test_var # not good
-
-coxph_plot  # ok
-
-# specify functions from packages directly
-
-dplyr::mutate()
-```
 
 ---
 
