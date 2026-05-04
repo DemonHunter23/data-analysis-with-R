@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Data Wrangling - Part 2"
 author: "Veronika Batzdorfer"
-date: "2025-11-07"
+date: "2025-05-08"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -18,7 +18,7 @@ layout: true
 
 Before we focused on the structure of our data by **selecting**, **renaming**, and **relocating** columns and **filtering** and **arranging** rows, in this part we focus on :
 
-- creating and computing new variables (in various ways)
+- creating and computing new variables
 
 - recoding the values of a variable
 
@@ -28,15 +28,16 @@ Before we focused on the structure of our data by **selecting**, **renaming**, a
 
 ## Creating & transforming variables
 
-Add new variables by changing the data type of an existing variable. 
+You can change the data type of an existing variable with base R:
 
 ```{r base-add-type}
-stackoverflow_survey_single_response$country <- as.factor(stackoverflow_survey_single_response$country)
+stackoverflow_survey_single_response$country <- as.factor(
+  stackoverflow_survey_single_response$country
+  )
 
 typeof(stackoverflow_survey_single_response$country)
 
 ```
-
 
 ---
 
@@ -52,7 +53,7 @@ library(tidyverse)
 conflict_prefer("filter", "dplyr")
 conflict_prefer("mutate", "dplyr")
 
-#-----------mutate---------------------------------------
+#-----------create constant-------------------------------
 tuesdata_2024 <- stackoverflow_survey_single_response %>% 
   dplyr::mutate(year = 2024)
 
@@ -95,7 +96,9 @@ tuesdata_2024 %>%
 
 ## Recoding values
 
-For example, we want to recode the item on organisation size (`org_size`) so that higher values represent higher employee size. For that purpose, we can combine the two `dplyr` functions `mutate()` and `recode()`.
+Sometimes the numeric coding of a variable does not match its meaning. E.g., we want to recode `org_size` so that higher values represent higher employee size. 
+
+We can combine `mutate()` with `recode()`.
 See `qname_levels_single_response_crosswalk`
 
 
@@ -115,12 +118,12 @@ stackoverflow_survey_single_response <- stackoverflow_survey_single_response %>%
 
 ```
 
-
+*Note*: Values you do not mention in recode() are left unchanged.
 ---
 
 ## Wrangling missing values
 
-When we prepare our data for analysis there are generally two things we might want/have to do with regard to missing values:
+When preparing data for analysis we need to do one of two things with  missing values:
 
 - define specific values as missings (i.e., set them to `NA`)
 
@@ -131,8 +134,8 @@ When we prepare our data for analysis there are generally two things we might wa
 
 ## The missings of `naniar` `r ji("lion")`
 
-The `naniar` is useful for handling missing data in `R` . 
-We can use the function `replace_with_na_all` to code every value in our data set that is < 0 as `NA`.
+The `naniar` package is useful for handling missing data. 
+`replace_with_na_all` codes every value in our data set that is < 0 as `NA`.
 
 ```{r naniar-all-zero, eval=FALSE}
 tuesdata <- stackoverflow_survey_single_response %>%
@@ -140,13 +143,14 @@ tuesdata <- stackoverflow_survey_single_response %>%
   replace_with_na_all(condition = ~.x < 0)
 ```
 
-Using the functions `replace_with_na_at()` and `replace_with_na_if()`, we can also recode values as `NA` for a selection or specific type of variables (e.g., all numeric variables).
+**Caution**: This checks every column.
+Using `replace_with_na_at()` and `replace_with_na_if()`, we can also recode values as `NA` for a selection or specific type of variables (e.g., all numeric variables).
 
 ---
 
 ## Dealing with missing values in `R`
 
-As with everything in `R`, there are also many online resources on dealing with missing data. A fairly new and interesting one is the [chapter on missing values on the work-in progress 2nd edition of *R for Data Science*](https://r4ds.hadley.nz/missing-values.html). 
+A good starting point is the [chapter on missing values on the work-in progress 2nd edition of *R for Data Science*](https://r4ds.hadley.nz/missing-values.html). 
 
 There also are various packages for different imputation techniques. A popular one is the [`mice` package](https://amices.org/mice/). However, we won't cover the topic of imputation in this course.
 
@@ -198,17 +202,19 @@ tuesdata <- stackoverflow_survey_single_response %>%
 
 
 ## Conditional variable transformation
-Sometimes we need to make the values of a new variable conditional on values of (multiple) other variables. Such cases require conditional transformations.
+Sometimes we need to make the values of a new variable conditional on values of (multiple) other variables.
 
 ---
 
 ## Simple conditional transformation
 
-The simplest version of a conditional variable transformation is using an `ifelse()` statement.
+The simplest version is using an `ifelse()`:
 
 ```{r mutate-ifelse}
 stackoverflow_survey_single_response <- stackoverflow_survey_single_response %>% 
-  dplyr::mutate(ed_char = ifelse(ed_level == 1, "professional", "beginner"))
+  dplyr::mutate(
+    ed_char = ifelse(ed_level == 1, "professional", "beginner")
+    )
 
 stackoverflow_survey_single_response %>% 
   dplyr::select(ed_level, ed_char) %>% 
@@ -224,7 +230,7 @@ stackoverflow_survey_single_response %>%
 
 ## Advanced conditional transformation
 
-For more flexible (or complex) conditional transformations, the `case_when()` function from `dyplyr` is a powerful tool.
+For more flexible (or complex) conditions, use the `case_when()` function from `dyplyr`:
 
 ```{r case-when}
 stackoverflow_survey_single_response <- stackoverflow_survey_single_response %>% 
@@ -247,11 +253,11 @@ A few things to note about `case_when()`:
 
 - you can have multiple conditions per value
 
-- conditions are evaluated *consecutively*
+- conditions are evaluated *consecutively* (order matters!)
 
-- when none of the specified conditions are met for an observation, by default, the new variable will have a missing value **`NA`** for that case
+- when none of the specified conditions are met, by default, the new variable will have a **`NA`** 
 
-- if you want some other value in the new variables when the specified conditions are not met, you need to add .highlight[`TRUE ~ value`] as the last argument of the `case_when()` call
+- if you want some other value in the new variables when the specified conditions are not met,add .highlight[`TRUE ~ value`] as the last argument of the `case_when()` call
 
 - to explore the full range of options for `case_when()` check out its [online documentation](https://dplyr.tidyverse.org/reference/case_when.html) 
 
@@ -259,7 +265,7 @@ A few things to note about `case_when()`:
 
 ## Recode values `across()` defined variables 
 
-We can also use .highlight[`across()`] to recode multiple variables. Here, we want to recode the items measuring trust so that they reflect distrust instead. In this case, we probably want to create new variables. We can do so by using the `.names` argument of the `across()` function
+We can also use .highlight[`across()`] to recode multiple variables. Here, we want to reverse recode the items measuring trust. In this case, we create new variables. We can do so by using the `.names` argument of the `across()` function
 
 ```{r recode-across}
 stackoverflow_survey_single_response <- 
@@ -285,16 +291,18 @@ stackoverflow_survey_single_response <-
 
 ## Other options for using `across()`
 
-It can be used with logical conditions (such as `is.numeric()`) or the `dplyr` selection helpers we encountered in the previous session (such as `starts_with()`) to apply transformations to variables of a specific type or meeting some other criteria (as well as all variables in a data set).
 
-To explore more options, you can check the [documentation for the `across()` function](https://dplyr.tidyverse.org/reference/across.html).
+- logical conditions such as `is.numeric()`
+- `dplyr` selection helpers such as `starts_with()`
+
+
+See also the [documentation for the `across()` function](https://dplyr.tidyverse.org/reference/across.html).
 
 ---
 
 ## Aggregate variables
 
-What is important to keep in mind here is that `dplyr` operations are applied **per column**. This is a common sources of confusion and errors as what we want to do in the case of creating aggregate variables requires transformations to be applied per row (respondent).
-
+`dplyr` operations are applied **per column**. Creating aggregate variables (e.g., scale means) requires a function that works per row.
 ---
 
 ## Aggregate variables
@@ -311,21 +319,26 @@ The most common type of aggregate variables are sum and mean scores.<sup>1</sup>
 
 ## Mean score
 
-In this example, we create a mean score for trust in ai in the workflow.
+In this example, we create a mean score for trust. `across()` selects the columns; `rowMeans()` computes the mean for each respondent:
 
 ```{r meanscore}
 stackoverflow_survey_single_response <- stackoverflow_survey_single_response %>%
   
-  dplyr::mutate(mean_ai_trust = rowMeans(dplyr::across(
-    ai_acc:ai_threat),
-    na.rm = TRUE))
+  dplyr::mutate(
+    mean_ai_trust = rowMeans(
+      dplyr::across(ai_acc:ai_threat),
+      na.rm = TRUE)
+    )
 ```
+
+
+Why `na.rm = TRUE`? If a respondent has a missing value on any item, `rowMeans()` returns NA unless we explicitly ignore missings.
 
 ---
 
 ## More options for aggregate variables
 
-If you want to use other functions than just `mean()` or `sum()` for creating aggregate variables, you need to use the [`rowwise()` function from `dplyr`](https://dplyr.tidyverse.org/articles/rowwise.html) in combination with [`c_across()`](https://dplyr.tidyverse.org/reference/c_across.html) which is a special variant of the `dplyr` function `across()` for row-wise operations/aggregations.
+If you need other aggregates than `mean()` or `sum()` use the [`rowwise()` function from `dplyr`](https://dplyr.tidyverse.org/articles/rowwise.html) in combination with [`c_across()`](https://dplyr.tidyverse.org/reference/c_across.html) which is a special variant of the `dplyr` function `across()` for row-wise operations.
 
 
 ---
@@ -341,11 +354,11 @@ In the examples in this session, we almost exclusively worked with numeric varia
 
 ## Factors
 
-Factor are a special type of variable in `R` that represent categorical data. Before `R` version `4.0.0.` the default for `base R` was that all characters variables are imported as factors.
+Factor are a special type of variable in `R` that represent categorical data. 
 
-Internally, factors are stored as integers, but they have (character) labels (so-called *levels*) associated with them. 
+Internally, factors are stored as integers, but they have (character) labels (so-called *levels*). 
 
-Notably, as factors are a native data type to `R`, they do not cause the issues that labelled variables often do (as labels represent an additional attribute, making them a special class that many functions cannot work with).
+Notably, as factors are a native data type to `R`, they do not cause the issues that labelled variables often do.
 
 ---
 
@@ -375,10 +388,14 @@ Using the `recode_factor()` function (together with `mutate()`) from `dplyr`, we
 
 ```{r unordered-factor}
 tuesdata_ai_threat <- stackoverflow_survey_single_response  %>% 
-  dplyr::mutate(ai_threat_fac = dplyr::recode_factor(ai_threat,
-                                 `1` = "I'm not sure",
-                                 `2` = "No",
-                                 `3` = "Yes"))
+  dplyr::mutate(
+    ai_threat_fac = dplyr::recode_factor(
+      ai_threat,
+      `1` = "I'm not sure",
+      `2` = "No",
+      `3` = "Yes")
+    )
+
 tuesdata_ai_threat %>% 
   dplyr::select(ai_threat, ai_threat_fac) %>% 
   dplyr::filter(!is.na(ai_threat)) %>% 
@@ -388,11 +405,9 @@ tuesdata_ai_threat %>%
 
 ---
 
----
-
 ## Summary statistics
 
-To make sense of quantitative data we can reduce their information to unique values.
+To make sense of quantitative data we can reduce them to unique values.
 
 --
 
@@ -415,7 +430,7 @@ As such, we can use summarizing functions of
 
 ## Summary statistics: `summary()`
 
-A quick and easy way to check some summary statistics for your data set is the `base R` function `summary()` which can be applied to individual variables...
+A quick check for your data set is the `base R` function `summary()` which can be applied to individual variables...
 
 ```{r summary}
 summary(stackoverflow_survey_single_response$ai_acc)
