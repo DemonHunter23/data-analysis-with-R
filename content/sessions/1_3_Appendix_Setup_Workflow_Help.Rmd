@@ -2,7 +2,7 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Workflow & Github"
 author: "Veronika Batzdorfer"
-date: "2025-11-07"
+date: "2026-05-08"
 presenter: Veronika
 ---
 layout: true 
@@ -15,7 +15,7 @@ layout: true
 
 ## Space of names `r ji("spades")`
 
-Packages are developed/maintained by different people and teams and - according to [METACRAN](https://www.r-pkg.org/) - there are currently more than 18,400 packages available on *CRAN*. Also, there are clear limits for creativity in naming functions. Hence, different packages can use the same function names. This can create what is called a .highlight["namespace conflict"]. 
+With more than 20,000 packages on CRAN, different developers sometimes choose the same function name. When you load a package, its functions enter the search path and can mask functions from packages loaded earlier.
 
 ---
 
@@ -27,9 +27,12 @@ If you load a package and some of its functions have the same names as those fro
 detach("package:dplyr", unload = TRUE)
 ```
 
-```{r mask-example, message=FALSE, warning=FALSE}
+```{r mask-example, warning=FALSE, message=TRUE}
 library(dplyr)
 ```
+
+From now on, `filter()` refers to dplyr::filter(). 
+
 
 ---
 
@@ -86,7 +89,18 @@ remove.packages(c("correlation", "effectsize"))
 
 ## Advanced commenting of `R` scripts
 
-A neat trick in *RStudio* is that if you end a comment preceding a block of code with `####` (or more `#` or `----` or more dashes), you create a section in your script that can be collapsed and expanded in the *RStudio* script pane. This also creates a small interactive table of contents. 
+In RStudio, end a comment with four (or more) dashes `----` to create a collapsible section:
+
+```{r, eval=FALSE}
+# 1. Load packages ----
+library(tidyverse)
+
+# 2. Import data ----
+dat <- read_csv("data.csv")
+
+# 3. Clean data ----
+dat <- dat %>% filter(!is.na(id))
+```
 
 
 ---
@@ -101,18 +115,41 @@ woRkshoptools::include_picture("./script_sections_expanded_highlighted.png")
 
 ## *RStudio* projects
 
-You can create a project via: `File` -> `New Project`. *RStudio* projects are associated with `.Rproj` files that contain some specific settings for the project. If you double-click on a `.Rproj` file, this opens a new instance of *RStudio* with the working directory and file browser set to the location of that file (the repository/folder for this workshop contains an `.Rproj` file, if you want to try this out).
+
+An RStudio Project (`.Rproj` file) is the safest way to organize work:
+
+- It sets the working directory automatically to the project folder.
+- It keeps scripts, data, and output together.
+- It makes file paths relative (e.g., "data/survey.csv" instead of "/Users/veronika/.../survey.csv").
+
+Create one: File → New Project → New Directory → New Project.
+
 
 ---
 
-## Customization options in *RStudio*
+## Recommended project structure
 
-*RStudio* offers a wide range of [customization options](https://support.rstudio.com/hc/en-us/articles/200549016-Customizing-RStudio). In the following, we will briefly discuss two of them:
+Keep a consistent folder structure:
 
-- pane layout
 
-- appearance
-
+```{r, eval=FALSE}
+my_project/
+├── my_project.Rproj
+├── .gitignore
+├── README.md
+├── R/
+│   ├── 01_import.R
+│   ├── 02_clean.R
+│   └── 03_analyze.R
+├── data/
+│   ├── raw/
+│   └── processed/
+└── output/
+    ├── figures/
+    └── tables/
+```
+    
+    
 ---
 
 ## `R` workspace
@@ -171,7 +208,7 @@ woRkshoptools::include_picture("./github.jpg")
 
 - [install Git](https://git-scm.com/)
 
-- (in case doesnt work straight away: Configure Git: go to **Tools** > **Global Options** > **Git/SVN** and make sure that the box Git executable points to your Git executable)
+- (in case doesn't work straight away: Configure Git: go to **Tools** > **Global Options** > **Git/SVN** and make sure that the box Git executable points to your Git executable)
 
 ---
 
@@ -243,27 +280,63 @@ woRkshoptools::include_picture("./git_r.png")
 
 ## Tips
 
-- Use .highlight[.gitignore] to avoid pushing large data files.
-
-- Commit often with meaningful messages.
-
-- Use branches for experimenting without breaking the main code.
-
-
+| Bad      | Good                                               |
+| -------- | -------------------------------------------------- |
+| `fix`    | `Fix missing value recoding in org_size`           |
+| `update` | `Add mean trust score and reverse-coded items`     |
+| `asdf`   | `Refactor gapminder analysis into separate script` |
 
 
 
+---
+## Ignoring files with `.gitignore`
+
+Not everything belongs on GitHub. Large datasets, passwords, or temporary output should stay local.
+Create a file named .gitignore in your project root:
 
 
 
+```{r eval=FALSE}
+
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+
+# Large data files
+data/raw/*.csv
+data/raw/*.dta
+
+# Output we can regenerate
+output/figures/*.png
+output/tables/*.html
+
+```
+
+.small[
+Rule of thumb: version-control code, not data or generated output.
+]
+
+---
+
+## Tips for  Git 
+
+- Commit early, commit often — one logical change per commit.
+- Pull before you push — always sync before uploading.
+- Use branches for experiments (git checkout -b new-analysis).
+- Never commit sensitive information (passwords, API keys, personal data).
 
 
+---
+
+## Your turn
+
+### Resolve a namespace conflict
 
 
-
-
-
-
+- Load both `dplyr` and `plyr` in a fresh R session. 
+- What happens to `summarise` / `summarize`? 
+- Use conflict_prefer() to enforce the dplyr version and write a line of code that proves it works.
 
 
 
