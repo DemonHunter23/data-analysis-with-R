@@ -1,4 +1,4 @@
-# "Data Literacy: Introduction to R and local language models"
+# "Data Literacy: Introduction to R and Language Models"
 
 [Veronika Batzdorfer](https://sociology.itz.kit.edu/21_138.php) [veronika.batzdorfer@kit.edu](mailto:veronika.batzdorfer@kit.edu)
 
