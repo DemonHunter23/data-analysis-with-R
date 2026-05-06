@@ -34,6 +34,26 @@ By the end of the course participants should be:
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
 | **Friday** | **16:10 - 17:00**  | **Tidy Tuesday -- Group Work**     |
 
+### Day 1: [08-05]
+| Day | Time | Topic |
+|---|---|---|
+| **Friday** | **09:00 - 10:00** | **[Onboarding & Getting Started with R](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/302b3bdbee0366b79a686899a3da8df95c55dc25/slides/1_1_Getting_Started.html)** |
+| *Friday* | *10:00 - 10:10* | *Break* |
+| **Friday** | **10:10 - 12:00** | **[Data Types & Loading](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/b802893f1a25a93d1b72b684ad15022c24872b4f/slides/1_2_Data_Types_Import_Export.html)** & **[Data Wrangling](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/8155744a2985138770e7850aeba498e349bbd0f2/slides/2_1_Data_Wrangling_Part1.html)** |
+| *Friday* | *12:00 - 12:15* | *Break* |
+| **Friday** | **12:15 - 13:00** | **[Data Wrangling2](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/72fa80e5e575016d6431f24ed29faf0c05d36df7/slides/2_2_Data_Wrangling_Part2.html)** & **[EDA](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/e9706ea3e895a98519bd10e00b39bbdebfac27a7/slides/3_1_Exploratory_Data_Analysis.html)** |
+| *Friday* | *13:00 - 14:00* | *Lunch Break* |
+| **Friday** | **14:00 - 14:45** | **[Data Wrangling2](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/72fa80e5e575016d6431f24ed29faf0c05d36df7/slides/2_2_Data_Wrangling_Part2.html)** & **[EDA](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/e9706ea3e895a98519bd10e00b39bbdebfac27a7/slides/3_1_Exploratory_Data_Analysis.html)** |
+| *Friday* | *14:45 - 15:00* | *Break* |
+| **Friday** | **15:00 - 16:00** | **[Data Workflows & Github](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/5fd7e665276cfbb147a3840c486066b1a541de9e/slides/1_3_Appendix_Setup_Workflow_Help.html)** |
+| *Friday* | *16:00 - 16:10* | *Break* |
+| **Friday** | **16:10 - 16:45** | **Tidy Tuesday -- Group Work** |
+
+
+
+
+
+
 ---
 <!--
 ### Day 2: [21-11]
