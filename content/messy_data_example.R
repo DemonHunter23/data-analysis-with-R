@@ -3,11 +3,11 @@
 # TIDY DATA MINI-TASKS: Live Coding Script for Workshop
 # Author: vb
 # Date: 2026-05-08
-# Purpose: Demonstrate tidy data violations and fixes interactively
+
 # =============================================================================
 
 # --- Setup -------------------------------------------------------------------
-# Load required packages (install if needed)
+
 if (!require("tidyr")) install.packages("tidyr")
 if (!require("dplyr")) install.packages("dplyr")
 if (!require("ggplot2")) install.packages("ggplot2")
@@ -42,7 +42,7 @@ tidy1 <- messy1 |>
     cols = starts_with("score_"),
     names_to = "year",
     values_to = "score"
-  ) 
+  )
 
 
 print(tidy1)
@@ -50,7 +50,7 @@ print(tidy1)
 
 
 # =============================================================================
-# TASK 2: 
+# TASK 2:
 # =============================================================================
 
 
@@ -76,7 +76,7 @@ print(tidy2)
 
 
 # =============================================================================
-# TASK 3: 
+# TASK 3:
 # =============================================================================
 
 
@@ -109,7 +109,7 @@ cat("\n")
 
 
 # =============================================================================
-# TASK 4: The Nightmare Dataset 
+# TASK 4: The Nightmare Dataset
 # =============================================================================
 
 
