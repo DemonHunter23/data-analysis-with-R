@@ -33,10 +33,16 @@ messy1 <- data.frame(
   score_2024 = c(88, 92, 80)
 )
 
+
+messy1
+
 cat(">>> What's wrong? Why can't we easily plot score over time?\n")
 
 
 
+
+
+#---------
 tidy1 <- messy1 |>
   pivot_longer(
     cols = starts_with("score_"),
