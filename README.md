@@ -41,7 +41,7 @@ By the end of the course participants should be:
 
 
 ---
-<!--
+
 ### Day 2: [21-11]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
@@ -66,7 +66,7 @@ By the end of the course participants should be:
 |*Monday*     | *15:00 - 15:15* | *Break*                       |
 | **Monday** | **15:15 - 16:00** | **[Hands-on R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/2e7fcea4be42f0e941eabae26ea1ac66116179a4/exercises/Exercise_5_1_1_R_Markdown.html)**      |-->
 
-<!-----
+
 -->
 <!--### Day 4: [24-06]
 | Day         | Time            | Topic                                |
