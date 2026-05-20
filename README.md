@@ -49,7 +49,7 @@ By the end of the course participants should be:
 | *Friday* | *10:45 - 11:00*  | *Break*                             |
 | **Friday** | **11:00 - 12:00** | **[Large Language Models & Wikipedia](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1f08cd259f42b841aef850c1fafc383e235c3f1f/slides/5_3_ApplicationR.html)**            |
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
-| **Friday** | **13:00 - 14:45** | **[Reproducible Reporting with R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/a4070c43d4b38ea2a76d5267550edf79ee61db59/slides/5_1_Reporting_w_Rmarkdown.html)**      |
+| **Friday** | **13:00 - 14:45** | **[Reproducible Reporting with R Markdown](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/0f641614e7158e04c25133a04c210bd807fbb3fb/slides/5_1_Reporting_w_Rmarkdown.html)**      |
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
 | **Friday** | **15:00 - 16:00**  | **Group exploration**     |
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
