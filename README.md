@@ -45,7 +45,7 @@ By the end of the course participants should be:
 ### Day 2: [21-11]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
-| **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/decf72565ac0249a24aa1ee5e2f3fef0f3cd3bb2/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/09522ad64ade5f618a15a3be53d305b7463a5a25/slides/4_1_Confirmatory_Data_Analysis.html)**   |
+| **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/decf72565ac0249a24aa1ee5e2f3fef0f3cd3bb2/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/3607bb4fefdbfe635a7842c7d07745f8c0602257/slides/4_1_Confirmatory_Data_Analysis.html)**   |
 | *Friday* | *10:45 - 11:00*  | *Break*                             |
 | **Friday** | **11:00 - 12:00** | **[Large Language Models & Wikipedia](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/1f08cd259f42b841aef850c1fafc383e235c3f1f/slides/5_3_ApplicationR.html)**            |
 |*Friday*     | *12:00 - 13:00* | *Lunch Break*                       |
