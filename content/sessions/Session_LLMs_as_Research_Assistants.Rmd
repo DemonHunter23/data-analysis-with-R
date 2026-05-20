@@ -1,0 +1,740 @@
+---
+title: "Data Literacy: Introduction to R"
+subtitle: "LLMs as Research Assistants"
+author: "Veronika Batzdorfer"
+date: "2026-05-22"
+presenter: Veronika
+editor_options: 
+  chunk_output_type: console
+---
+layout: true 
+
+```{r child = "./content/config/sessions_setup.Rmd"}
+```
+
+---
+
+class: center, middle
+
+# LLMs as Research Assistants
+## Principles, Prompts, and Verification
+
+---
+
+## Why Are We Talking About LLMs in an R Course?
+
+.pull-left[
+**The reality**
+- LLMs are already in your workflow
+- They will not replace R skills — they amplify them
+- But only if you know how to verify what they give you
+]
+
+.pull-right[
+**Today’s principles**
+1. Privacy first: local/open-source models
+2. Trust but verify: audit every line
+3. Structured grounding: Wikipedia API reduces hallucination
+4. Reproducibility: prompts are part of your methods
+]
+
+.footnote[This session assumes no paid subscriptions. Everything runs locally or via free tiers.]
+
+---
+
+## The Landscape: Local vs. Cloud
+
+| Option | Setup | Cost | Privacy | Best For |
+|--------|-------|------|---------|----------|
+| **Ollama** (local) | Install app, pull model | Free | Perfect | Sensitive data, daily coding |
+| **OpenRouter** (API) | API key, pay-per-token | Low | High (no training) | Accessing many models |
+| **Hugging Face** (API) | Free tier | Free | Medium | Experimentation |
+| **GitHub Copilot** | IDE plugin | Subscription | Low | Autocomplete |
+
+**For this course:** We focus on **Ollama** (local) and **Wikipedia API** (structured knowledge) because they require zero subscriptions and work offline.
+
+---
+
+## Setup Check (2 Minutes)
+
+**What to say:**
+> "If you want to follow along with local models, install Ollama from ollama.com and run `ollama pull llama3.2` in your terminal. If you cannot install software, we also show API-based alternatives you can call from R with an internet connection."
+
+```{r setup-check, eval = FALSE}
+# Check if you have the key packages
+install.packages("ellmer")      # Posit's unified LLM interface
+install.packages("httr2")       # Modern HTTP requests
+install.packages("WikipediR")   # Wikipedia API wrapper
+install.packages("jsonlite")    # JSON parsing
+install.packages("rvest")       # HTML scraping for Wikipedia cleanup
+```
+
+```{r setup-load, message = FALSE, warning = FALSE}
+library(ellmer)
+library(httr2)
+library(WikipediR)
+library(jsonlite)
+library(rvest)
+library(tidyverse)
+```
+
+---
+
+## Principle 1: The Prompt is Part of Your Method
+
+**What to say:**
+> "In reproducible research, every transformation matters. If you used an LLM to generate your recoding scheme, your imputation strategy, or your model specification, that prompt is a methodological choice. Document it. A good practice: save prompts as text files in your project folder."
+
+```{r prompt-logging, eval = FALSE}
+# Save your prompt as a method file
+prompt <- "You are an R data analyst. Given a dataframe with columns 
+           bill_length_mm and body_mass_g, write ggplot2 code for a 
+           scatter plot with species as color and a linear regression line."
+
+writeLines(prompt, "methods/01_visualization_prompt.txt")
+```
+
+.highlight[Golden rule:] *If you cannot share your prompt, you cannot share your method.*
+
+---
+
+## Principle 2: Use `ellmer` — One Interface, Many Models
+
+**What to say:**
+> "The `ellmer` package from Posit is the modern way to talk to LLMs from R. It abstracts away provider differences. You can switch from a local Ollama model to an OpenAI API endpoint by changing one line of code. This is crucial for reproducibility — your analysis logic stays the same even if the backend changes."
+
+.pull-left[
+```{r ellmer-local, eval = FALSE}
+# LOCAL: Ollama (free, runs on your laptop)
+chat_local <- chat_ollama(
+  model = "llama3.2",
+  system_prompt = "You are a helpful R programming assistant. 
+                   Return only valid R code with comments."
+)
+```
+]
+
+.pull-right[
+```{r ellmer-cloud, eval = FALSE}
+# CLOUD: OpenRouter (open-source models via API)
+# chat_api <- chat_openrouter(
+#   model = "meta-llama/llama-3.2-3b-instruct",
+#   api_key = Sys.getenv("OPENROUTER_API_KEY")
+# )
+```
+]
+
+---
+
+## Your First LLM Call from R
+
+.pull-left[
+```{r first-chat, eval = FALSE}
+# Create a chat object (local Ollama)
+chat <- chat_ollama(model = "llama3.2")
+
+# Ask a focused, structured question
+response <- chat$chat(
+  "Write R code using ggplot2 to create a boxplot of body_mass_g 
+   by species from the palmerpenguins dataset. Use theme_minimal()."
+)
+
+# The response is text — you must still run and verify it
+cat(response)
+```
+]
+
+.pull-right[
+**Critical reminder**
+
+The LLM returns .highlight[text], not executed code. You are still the analyst. Copy the code into a chunk, inspect it, and only then run it.
+
+Never let an LLM execute code unsupervised in your environment.
+]
+
+---
+
+## Principle 3: Structured Output — Force Precision
+
+**What to say:**
+> "LLMs are chatty. They wrap code in markdown fences, add explanations you do not need, and sometimes invent packages. `ellmer` supports structured outputs: you can force the model to return JSON with specific fields. This is essential for automated pipelines."
+
+```{r structured-output, eval = FALSE}
+# Define a JSON schema for structured responses
+schema <- type_object(
+  "R_code_analysis",
+  code = type_string("Valid R code snippet, no markdown fences"),
+  packages = type_array("Vector of package names required", type_string()),
+  warnings = type_array("Vector of warnings about the code", type_string())
+)
+
+response <- chat$chat(
+  "Analyze the relationship between flipper_length_mm and body_mass_g 
+   in palmerpenguins. Return R code for a scatter plot with regression line.",
+  type = schema
+)
+
+# Now you get a list: response$code, response$packages, response$warnings
+str(response)
+```
+
+---
+
+## Principle 4: Grounding with Wikipedia API
+
+**What to say:**
+> "LLMs hallucinate facts. A cheap and effective way to ground them is to fetch structured knowledge from Wikipedia via the WikipediR package, then feed that text into the prompt as context. This is a primitive form of Retrieval-Augmented Generation (RAG) — and it works remarkably well for domain concepts your students might ask about."
+
+```{r wiki-grounding, eval = FALSE}
+# Fetch Wikipedia content as grounding context
+wiki_page <- page_content("en", "wikipedia", page_name = "Penguin")
+
+# Extract the plain text introduction
+wiki_text <- wiki_page$parse$text$`*`
+
+# Build a grounded prompt
+prompt <- paste0(
+  "Context from Wikipedia:
+", 
+  substr(wiki_text, 1, 2000),  # First 2000 chars as context
+  "
+
+Task: Write a 2-sentence summary of penguin biology 
+   suitable for a figure caption in a scientific report."
+)
+
+response <- chat$chat(prompt)
+```
+
+---
+
+## Live Demo: Wikipedia + LLM Pipeline
+
+.pull-left[
+```{r wiki-llm-pipeline, eval = FALSE}
+# Helper: clean Wikipedia HTML to plain text
+get_wiki_summary <- function(topic) {
+  page <- page_content("en", "wikipedia", page_name = topic)
+  html <- read_html(page$parse$text$`*`)
+  text <- html_text(html)
+  # Return first 1500 characters of cleaned text
+  substr(gsub("\s+", " ", text), 1, 1500)
+}
+
+# Fetch context
+penguin_context <- get_wiki_summary("Penguin")
+
+# Grounded generation
+chat <- chat_ollama(model = "llama3.2")
+caption <- chat$chat(paste(
+  "Using ONLY the following context, write a 1-sentence figure caption",
+  "about penguin morphological diversity for a scatter plot of",
+  "bill length vs body mass. Context:", penguin_context
+))
+
+cat(caption)
+```
+]
+
+.pull-right[
+**Insight:** The LLM is constrained by the provided text. It cannot invent species or migration habits not in the Wikipedia article.
+
+This is a .highlight[Retrieval-Augmented Generation (RAG)] primitive — and it is free.
+]
+
+---
+
+## Principle 5: Iterative Refinement — The Chat Thread
+
+**What to say:**
+> "Good analysis is iterative. `ellmer` maintains conversation state in the chat object. You can ask for a plot, then ask to modify colors, then ask to add a regression line — and the model remembers the previous code. This mirrors how you would actually work: draft, review, refine."
+
+```{r iterative-chat, eval = FALSE}
+chat <- chat_ollama(model = "llama3.2")
+
+# Turn 1: Draft
+v1 <- chat$chat("Write ggplot2 code for a scatter plot of 
+                bill_length_mm vs body_mass_g from palmerpenguins,
+                colored by species.")
+cat(v1)
+
+# Turn 2: Refine (the chat object remembers context)
+v2 <- chat$chat("Add separate linear regression lines per species 
+                using geom_smooth(method='lm', se=FALSE). 
+                Use a colorblind-safe palette.")
+cat(v2)
+
+# Turn 3: Polish
+v3 <- chat$chat("Add proper axis labels, a title, and save the plot 
+                to a 300dpi PNG using ggsave().")
+cat(v3)
+```
+
+---
+
+## TASK 1: Prompt Engineering Challenge
+
+# 10 min.
+
+**Scenario:** You need to explain Simpson's Paradox to a non-technical stakeholder using the penguins dataset.
+
+**Your task:**
+1. Open a chat with a local or API model.
+2. Write a **bad prompt** (vague, no context) asking for an explanation of Simpson's Paradox.
+3. Write a **good prompt** that includes:
+   - The role ("You are a statistics communicator")
+   - The audience ("explain to a biology undergrad")
+   - The constraint ("use only the palmerpenguins dataset as example")
+   - The format ("2 sentences + 1 ggplot2 code snippet")
+4. Compare the two responses. Which is more useful?
+5. Save both prompts to `prompts/task1_bad.txt` and `prompts/task1_good.txt`.
+
+**Deliverable:** Paste the good response into an R chunk and verify the code runs.
+
+---
+
+## TASK 1: Solution Framework
+
+.pull-left[
+```{r task1-bad, eval = FALSE}
+# BAD prompt
+bad <- "Explain Simpson's paradox"
+# Likely result: generic, wordy, no code, wrong examples
+```
+]
+
+.pull-right[
+```{r task1-good, eval = FALSE}
+# GOOD prompt
+good <- paste(
+  "Role: You are a statistics teaching assistant.",
+  "Audience: Second-year biology undergraduates who know basic R.",
+  "Task: Explain Simpson's Paradox in exactly 2 sentences.",
+  "Constraint: Use ONLY the palmerpenguins dataset.",
+  "Format: 2 sentences + 1 self-contained ggplot2 code snippet",
+  "showing how species confounds the bill_length vs body_mass relationship."
+)
+```
+]
+
+```{r task1-execute, eval = FALSE}
+# Execute and verify
+chat <- chat_ollama(model = "llama3.2")
+response <- chat$chat(good)
+cat(response)
+
+# --- STUDENT VERIFICATION STEP ---
+# Copy the code from the response into this chunk and run it:
+# ggplot(penguins, aes(...)) + ...
+```
+
+---
+
+## Principle 6: LLMs for Code Explanation, Not Just Generation
+
+**What to say:**
+> "The most underrated use of LLMs is explaining code you inherited. Paste a gnarly base R snippet into the chat and ask for a tidyverse translation with line-by-line comments. This is safer than generation because the input code is ground truth — the LLM only restructures it."
+
+.pull-left[
+```{r explain-code, eval = FALSE}
+# Inherited nightmare code
+legacy_code <- "aggregate(body_mass_g ~ species + sex, 
+                        data = penguins, 
+                        FUN = function(x) c(mean = mean(x), sd = sd(x)))"
+
+chat <- chat_ollama(model = "llama3.2")
+explanation <- chat$chat(paste(
+  "Translate this base R code into tidyverse (dplyr + tidyr).",
+  "Explain what each original line does and why the tidyverse version is better.",
+  "Code to translate:", legacy_code
+))
+
+cat(explanation)
+```
+]
+
+.pull-right[
+**Why explanation is safer**
+
+- Input code is ground truth
+- LLM only restructures, does not invent data
+- You can verify line-by-line
+- Less hallucination risk than generation from scratch
+]
+
+---
+
+## TASK 2: Explain & Refactor
+
+# 10 min.
+
+**Scenario:** You receive this code from a collaborator. It works but is unreadable.
+
+```{r messy-code}
+messy <- "penguins[!is.na(penguins$bill_length_mm) & penguins$species=='Adelie', ]$body_mass_g"
+```
+
+**Your task:**
+1. Paste the code into an LLM chat with the prompt: *"Explain this code to a beginner. Then rewrite it in tidyverse style with magrittr pipes."*
+2. Run both versions and verify they return identical vectors (use `identical()`).
+3. Ask the LLM: *"What happens if there are no Adelie penguins in the data? How would you make this robust?"*
+4. Implement the robust version.
+
+**Reflection:** Did the LLM catch the `filter()` vs. `[` behavior with zero rows?
+
+---
+
+## TASK 2: Solution
+
+.pull-left[
+```{r task2-original}
+# Original (messy)
+original <- penguins[!is.na(penguins$bill_length_mm) & penguins$species=='Adelie', ]$body_mass_g
+```
+
+```{r task2-refactored}
+# LLM-refactored (expected output)
+refactored <- penguins %>%
+  filter(!is.na(bill_length_mm), species == "Adelie") %>%
+  pull(body_mass_g)
+```
+]
+
+.pull-right[
+```{r task2-verify}
+# Verification
+identical(original, refactored)
+```
+
+```{r task2-robust}
+# Robust version (handles zero rows gracefully)
+robust <- penguins %>%
+  filter(!is.na(bill_length_mm), species == "Adelie") %>%
+  pull(body_mass_g)
+
+# pull() on empty tibble returns numeric(0)
+# Safer than $ which returns NULL
+```
+]
+
+---
+
+## Principle 7: When LLMs Fail — A Hall of Shame
+
+**What to say:**
+> "LLMs are confident liars. They invent R packages, hallucinate function arguments, and generate code that runs but produces wrong results. Your job as a data analyst is to be a skeptic. Here are common failure modes with penguin data."
+
+### Failure Mode 1: Hallucinated Packages
+
+```{r hallucination-1, eval = FALSE}
+# LLM might generate:
+library(ggplot3)       # Does not exist
+library(palmerpenguin)  # Wrong name (should be palmerpenguins)
+```
+
+### Failure Mode 2: Hallucinated Columns
+
+```{r hallucination-2, eval = FALSE}
+# LLM might use:
+ggplot(penguins, aes(x = wing_length_mm))  # Column does not exist!
+# Real column is flipper_length_mm
+```
+
+---
+
+## Failure Mode 3: Statistically Valid but Wrong
+
+```{r hallucination-3}
+# LLM-generated code that runs but is wrong:
+wrong_model <- lm(body_mass_g ~ species + flipper_length_mm, 
+                  data = penguins)
+# This runs, but if the LLM omitted bill_length_mm which is a confounder,
+# the coefficient for flipper_length_mm is biased (OVB from previous session!)
+```
+
+**The most dangerous code is code that runs.** Syntax checkers will not catch omitted variable bias. Only domain knowledge does.
+
+---
+
+## TASK 3: Spot the Bug
+
+# 10 min.
+
+**Scenario:** An LLM generated the following "perfect" analysis pipeline. Find 3 errors or questionable choices.
+
+```{r buggy-llm-code, eval = FALSE}
+# LLM-generated code (do not run blindly!)
+library(tidyverse)
+
+# "Remove all missing values" — dangerous!
+penguins_clean <- na.omit(penguins)
+
+# "Standardize all numeric variables" — includes year!
+penguins_scaled <- penguins_clean %>%
+  mutate(across(where(is.numeric), scale))
+
+# "Fit full model with all interactions"
+model <- lm(body_mass_g ~ .^2, data = penguins_scaled)
+
+# "Stepwise selection to find best model"
+best_model <- step(model, direction = "both", trace = 0)
+
+# "Report only significant coefficients"
+significant <- tidy(best_model) %>% filter(p.value < 0.05)
+print(significant)
+```
+
+**Your task:**
+1. Identify 3 problems (statistical, coding, or reproducibility).
+2. For each, write one sentence explaining why it is dangerous.
+3. Ask a local LLM: *"Critique this code for reproducibility issues."* Does it catch the same problems?
+4. Rewrite the pipeline correctly.
+
+---
+
+## TASK 3: Solution & Discussion
+
+| Problem | Why It Is Dangerous |
+|---------|-------------------|
+| `na.omit()` silently drops 2% of rows | Changes sample composition; use `drop_na()` with explicit columns instead |
+| `scale()` applied to `year` | Year is categorical even if numeric; scaling it implies false continuity |
+| `.^2` creates all 2-way interactions | 10 predictors → 45 interaction terms; massive overfitting on n = 333 |
+| `step()` on same data | Overfitting; p-values invalid; stepwise is deprecated in modern practice |
+| Filtering by p < 0.05 | Publication bias in a single model; ignores effect size and domain knowledge |
+
+**Key insight:** The LLM produced *syntactically valid* R code that is *methodologically catastrophic*. Syntax checkers will not catch this. Only domain knowledge does.
+
+---
+
+## Principle 8: LLMs + Wikipedia for Domain Exploration
+
+**What to say:**
+> "Before you analyze data, you need domain context. Wikipedia is a structured, versioned, and citation-linked knowledge base. Combining WikipediR with LLMs gives you a cheap literature-review assistant. The LLM synthesizes; Wikipedia grounds."
+
+.pull-left[
+```{r wiki-explore, eval = FALSE}
+# Step 1: Fetch related concepts from Wikipedia
+topics <- c("Penguin", "Sexual_dimorphism", "Allometry")
+
+context <- map_chr(topics, function(t) {
+  page <- page_content("en", "wikipedia", page_name = t)
+  html <- read_html(page$parse$text$`*`)
+  text <- html_text(html)
+  paste0("=== ", t, " ===\n", 
+         substr(gsub("\s+", " ", text), 1, 800))
+})
+
+# Step 2: Build a synthesis prompt
+prompt <- paste(
+  "You are writing a biology methods section.",
+  "Using ONLY the following Wikipedia excerpts,",
+  "explain why we might expect body mass differences between",
+  "male and female penguins, and why bill length might scale",
+  "allometrically with body mass. Cite the topics used.",
+  "\n\nContext:\n", paste(context, collapse = "\n\n")
+)
+
+chat <- chat_ollama(model = "llama3.2")
+methods_text <- chat$chat(prompt)
+cat(methods_text)
+```
+]
+
+.pull-right[
+**Why this works**
+
+- Wikipedia is versioned (check page history)
+- Community-edited with citations
+- Free and programmatically accessible
+- Constrains the LLM to existing knowledge
+
+**Limitation:** Wikipedia is a starting point, not a primary source for publication.
+]
+
+---
+
+## TASK 4: Build a Grounded Caption
+
+# 10 min.
+
+**Scenario:** You need a figure caption for a scatter plot of `bill_depth_mm` vs `bill_length_mm` by species.
+
+**Your task:**
+1. Use `WikipediR` to fetch the article on "Beak" (or "Bird_beak").
+2. Extract 500 characters of relevant text about bill morphology.
+3. Write a prompt that constrains the LLM to use ONLY that text as biological context.
+4. Generate a 2-sentence caption.
+5. **Crucial step:** Verify that no biological claim in the caption exceeds what was in the Wikipedia text.
+
+**Deliverable:** The caption + the Wikipedia excerpt you used, saved as a text file.
+
+---
+
+## TASK 4: Solution Framework
+
+```{r task4-solution, eval = FALSE}
+# Fetch and clean
+beak_page <- page_content("en", "wikipedia", page_name = "Beak")
+beak_text <- html_text(read_html(beak_page$parse$text$`*`))
+beak_clean <- substr(gsub("\s+", " ", beak_text), 1, 500)
+
+# Constrained prompt
+prompt <- paste(
+  "Write a 2-sentence figure caption for a scatter plot of",
+  "bill_depth_mm vs bill_length_mm in penguins.",
+  "You may ONLY use the following biological context.",
+  "Do not add facts not present below.\n\nContext:", beak_clean
+)
+
+chat <- chat_ollama(model = "llama3.2")
+caption <- chat$chat(prompt)
+
+# Save provenance
+writeLines(paste("Wikipedia source:\n", beak_clean, 
+                 "\n\nGenerated caption:\n", caption),
+           "output/figure_caption_provenance.txt")
+```
+
+---
+
+## Principle 9: Automation — Batch-Processing with LLMs
+
+**What to say:**
+> "Once you trust your prompt, you can scale it. Map over a vector of column names, dataset descriptions, or file paths, and ask the LLM to generate documentation, variable labels, or analysis code for each. This is where LLMs become genuinely productive — but only after you have validated the prompt on a single case."
+
+```{r batch-llm, eval = FALSE}
+# Auto-generate variable descriptions for a dataframe
+describe_variable <- function(var_name, sample_values) {
+  chat <- chat_ollama(model = "llama3.2")
+  chat$chat(paste(
+    "Write a 1-sentence description of this variable for a codebook.",
+    "Variable name:", var_name,
+    "Sample values:", paste(head(sample_values, 5), collapse = ", "),
+    "Dataset: Palmer Penguins."
+  ))
+}
+
+# Apply to all numeric columns
+penguins_numeric <- select(penguins, where(is.numeric))
+descriptions <- map_chr(names(penguins_numeric), function(v) {
+  describe_variable(v, pull(penguins_numeric, v))
+})
+
+tibble(variable = names(penguins_numeric), description = descriptions)
+```
+
+**Warning:** This burns tokens/time. Use only for final documentation, not exploration.
+
+---
+
+## TASK 5: The Skeptical Review
+
+# 15 min.
+
+**Scenario:** A student submits this "AI-assisted" analysis for homework. Review it.
+
+```{r homework-review, eval = FALSE}
+# --- STUDENT SUBMISSION ---
+# "I used ChatGPT to analyze the penguins dataset"
+
+library(tidyverse)
+
+# GPT said to remove outliers using IQR method
+Q1 <- quantile(penguins$body_mass_g, 0.25, na.rm = TRUE)
+Q3 <- quantile(penguins$body_mass_g, 0.75, na.rm = TRUE)
+IQR_val <- IQR(penguins$body_mass_g, na.rm = TRUE)
+penguins_no_outliers <- penguins %>%
+  filter(body_mass_g >= (Q1 - 1.5*IQR_val) & body_mass_g <= (Q3 + 1.5*IQR_val))
+
+# GPT said to normalize everything
+penguins_norm <- penguins_no_outliers %>%
+  mutate(across(where(is.numeric), ~ (.x - min(.x)) / (max(.x) - min(.x))))
+
+# GPT said stepwise is best for variable selection
+full <- lm(body_mass_g ~ ., data = penguins_norm)
+best <- step(full, trace = 0)
+
+# GPT said p < 0.05 means significant
+results <- tidy(best) %>% filter(p.value < 0.05)
+print(results)
+```
+
+**Your review task:**
+1. Identify 4 methodological errors (not syntax errors).
+2. For each, state whether an LLM could plausibly have suggested it.
+3. Rewrite ONE chunk correctly with a comment explaining your fix.
+4. Write a 3-bullet "Guidelines for AI-Assisted Homework" for the class.
+
+---
+
+## TASK 5: Review Key Points
+
+| Issue | LLM Plausible? | Correct Approach |
+|-------|---------------|------------------|
+| IQR outlier removal on entire dataset | Yes (common bad advice) | Domain knowledge: penguins have real size variation by species; stratify first |
+| Normalization before regression | Yes | Standardize only after train/test split; normalization destroys interpretability |
+| `step()` on same data | Yes (outdated textbooks) | Theory-driven model or penalized regression (glmnet) |
+| Filtering by p < 0.05 | Yes | Report full table with effect sizes; pre-register hypotheses |
+
+**Class guideline:**
+- **Verify every data transformation** against domain knowledge.
+- **Never modify data based on a global statistic** (IQR, mean) without stratifying by known groups.
+- **Treat LLM output as a first draft** — peer review it as you would a colleague's code.
+
+---
+
+## Summary: The LLM-Aware Research Cycle
+
+.pull-left[
+**The workflow**
+
+1. Ask Wikipedia (structured grounding)
+2. Draft prompt (role, audience, constraints)
+3. Generate code (structured output preferred)
+4. Audit & verify (syntax + methodology)
+5. Run in R (you are the executor)
+6. Log provenance (prompts are methods)
+]
+
+.pull-right[
+**The golden rules**
+
+- Local models for sensitive data
+- `ellmer` for provider independence
+- Wikipedia for grounded generation
+- Prompts are part of methods
+- LLMs generate drafts, not decisions
+- The most dangerous code is code that runs
+]
+
+---
+
+## The Seven Principles (Quick Reference)
+
+| # | Principle | Defense Against |
+|---|-----------|---------------|
+| 1 | Prompts are methods | Unreproducible analysis |
+| 2 | One interface (`ellmer`) | Vendor lock-in |
+| 3 | Structured output | Chatty, unparseable responses |
+| 4 | Wikipedia grounding | Hallucinated facts |
+| 5 | Iterative refinement | Premature commitment to bad code |
+| 6 | Explanation > generation | Invented packages and columns |
+| 7 | Skeptical review | Methodologically valid but wrong code |
+
+---
+
+## Further Resources
+
+- [`ellmer` documentation](https://ellmer.tidyverse.org/) — Posit's unified LLM interface
+- [Ollama](https://ollama.com/) — Run Llama, Mistral, Phi locally
+- [OpenRouter](https://openrouter.ai/) — API access to open-source models
+- [WikipediR](https://github.com/Ironholds/WikipediR) — R wrapper for MediaWiki API
+- [Prompt Engineering Guide](https://www.promptingguide.ai/) — General principles
+
+---
+
+class: center, middle
+
+# Questions?
+
+## Remember: The LLM is your intern, not your supervisor.

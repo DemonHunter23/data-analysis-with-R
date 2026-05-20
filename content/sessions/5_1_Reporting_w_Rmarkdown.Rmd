@@ -2,16 +2,28 @@
 title: "Data Literacy: Introduction to R"
 subtitle: "Reporting with R Markdown"
 author: "Veronika Batzdorfer"
-date: "2025-11-21"
+date: "2026-05-22"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
+  
 ---
 
 layout: true
 
-```{r child = "./content/config/sessions_setup.Rmd", warning=FALSE}
+```{r child = "./content/config/sessions_setup.Rmd", warning=FALSE, }
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE
+)
+
+options(download.file.method = "libcurl")
+options(timeout = 300)
+
+
 ```
+
 
 ---
 
@@ -20,7 +32,7 @@ layout: true
 create a variety of outputs in different formats: `R Markdown`
 
 ```{r workflow-img, echo=FALSE, out.width="60%", warning=FALSE}
-knitr::include_graphics("https://d33wubrfki0l68.cloudfront.net/571b056757d68e6df81a3e3853f54d3c76ad6efc/32d37/diagrams/data-science.png")
+woRkshoptools::include_picture("./mindblowing.png")
 ```
 
 <small><small>Source: <http://r4ds.had.co.nz/></small></small>
@@ -408,8 +420,9 @@ $$\sigma^{2} = \frac{\sum_{i=1}^{n}
 
 > block quote
 
+
 ```{r Rlogo, out.width = "20%", echo = FALSE}
-knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/R_logo.svg/310px-R_logo.svg.png")
+
 ```
 
 ]
