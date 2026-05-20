@@ -901,7 +901,6 @@ p_a + p_b + plot_annotation(
 | Sin | What It Is | Detection | Defense |
 |-----|-----------|-----------|---------|
 | **4. Multicollinearity** | Predictors too correlated; SEs explode | `car::vif()`; correlation matrix | Remove/combine predictors; PCA; ridge regression |
-
 | **5. Post-Hoc HARKing** | Hypothesizing after seeing results | Pre-registration; replication | Register hypotheses before analysis |
 | **6. Causal Overreach** | Using causal language from observational data | Language audit of abstracts/discussions | Stick to associative language |
 | **7. p-Hacking** | Multiple testing without correction | Histogram of p-values; too many predictors | Bonferroni, FDR; pre-registration; replication |
