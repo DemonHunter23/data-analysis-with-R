@@ -53,7 +53,7 @@ By the end of the course participants should be:
 | *Friday* | *14:45 - 15:00*  | *Break*                             |
 | **Friday** | **15:00 - 16:00**  | **Group exploration**     |
 | *Friday* | *16:00 - 16:10*  | *Break*                             |
-| **Friday** | **16:10 - 17:00**  | **Group pitches & Wrap-up**     |
+| **Friday** | **16:10 - 17:00**  | **Group pitches & [Wrap-up](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/df6e0215335330b3df55e139e999edb82b63c3d4/slides/5_3_Outlook.html)**     |
 
 ---
 
