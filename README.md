@@ -42,7 +42,7 @@ By the end of the course participants should be:
 
 ---
 
-### Day 2: [21-11]
+### Day 2: [22-05]
 | Day         | Time            | Topic                                |
 |-------------|-----------------|--------------------------------------|
 | **Friday** | **09:00 - 10:45** |**[Data Visualisation](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/decf72565ac0249a24aa1ee5e2f3fef0f3cd3bb2/slides/3_2_Data_Visualization_Part_1.html)** & **[Confirmatory Analyses](https://rawcdn.githack.com/nika-akin/data-analysis-with-R/3607bb4fefdbfe635a7842c7d07745f8c0602257/slides/4_1_Confirmatory_Data_Analysis.html)**   |
