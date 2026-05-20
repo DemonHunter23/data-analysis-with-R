@@ -1,8 +1,8 @@
 ---
 title: "Data Literacy: Introduction to R "
-subtitle: "Data Visualization"
+subtitle: "Visualization & Statistical Principles"
 author: "Veronika Batzdorfer"
-date: "2025-11-21"
+date: "2026-05-22"
 presenter: Veronika
 editor_options: 
   chunk_output_type: console
@@ -37,6 +37,34 @@ knitr::include_graphics("https://github.com/jobreu/r-intro-gesis-2021/blob/main/
 - Modern interface to graphics
 - grammar of graphics
 ]
+
+---
+
+## Visualization in the Research Cycle
+
+Data visualization is not just the final step—it's integral to the entire research process:
+
+.pull-left[
+**Exploration Phase**
+- Detect outliers and anomalies
+- Identify patterns and relationships
+- Spot data quality issues
+- Formulate hypotheses
+]
+
+.pull-right[
+**Communication Phase**
+- Present findings clearly
+- Support arguments with evidence
+- Enable reproducibility
+- Facilitate peer review
+]
+
+.center[
+
+<small>Source: R for Data Science (Wickham & Grolemund)</small>
+]
+
 
 ---
 ### Data for this session
@@ -333,7 +361,6 @@ We will systematically explore which elements are used in `ggplot` in this sessi
 ---
 
 ## Creating your own plot
-We do not want to give a lecture on the theory behind data visualization (if you want that, we suggest having a look at the excellent book [*Fundamentals of Data Visualization*](https://serialmentor.com/dataviz/) by Claus O. Wilke).
 
 
 Three components are important:
@@ -343,9 +370,7 @@ Three components are important:
 
 ---
 
-## Plot initiation
-Now, let's start from the beginning and have a closer look at the *grammar of graphics*.
-
+## Grammar of graphics: Initiation
 .pull-left[
 `ggplot()` is the most basic command to create a plot:
 
@@ -757,7 +782,7 @@ You can also annotate plots with titles, subtitles, captions, and tags.
 
 You can nest plots and introduce more complex layouts.
 
-If you're interested in this, you should check out the [`patchwork` repository on *GitHub*](https://github.com/thomasp85/patchwork) as everything is really well-documented there.
+Check out the [`patchwork` repository on *GitHub*](https://github.com/thomasp85/patchwork).
 
 ---
 
@@ -793,231 +818,630 @@ vis_miss(df [,1:5])
 ```
 ]
 
-
 ---
-## Exploratory Analyses
 
-```{r warning=FALSE, message=FALSE}
-# --- STEP 1: Foundation ---
-explanatory_plot <- df %>%
-  # Focus on the core relationship
-  ggplot(aes(x = bill_length_mm, y = flipper_length_mm, color = species)) +
-  
-  # --- STEP 2: Add uncertainty ---
-  geom_smooth(
-    method = "lm", 
-    se = TRUE,  # confidence bands
-    alpha = 0.1,  # Transparency
-    size = 1
-  ) +
-  
-  # --- STEP 3: Raw data distribution ---
-  geom_beeswarm(
-    aes(size = body_mass_g),  # Encode third dimension
-    alpha = 0.6,
-    dodge.width = 0.5  # Separate by species
-  ) +
-  
-  # --- STEP 4: Highlight key insights ---
-  geom_hline(
-    yintercept = 200, 
-    linetype = "dashed",
-    color = "gray30"
-  ) +
-  annotate(
-    "text",
-    x = 45, y = 205,
-    label = "Critical Flipper Length",
-    size = 3.5,
-    color = "gray30",
-    fontface = "italic"
-  )
-  
+## Common ggplot2 Errors & How to Fix Them
 
+Mistakes are learning opportunities! Let's explore common errors and their solutions.
+---
+
+
+## Mistake 1 ?
+
+
+.pull-left[
+```{r mistake1_wrong_a, eval = FALSE}
+
+ggplot(df, aes(x = bill_length_mm, 
+               y = flipper_length_mm,
+               color = "blue")) +  # Creates a legend!
+  geom_point()
 ```
+]
 
----
+.pull-right[
+```{r mistake1_right_b, eval = FALSE}
 
-```{r polishplot}
-# --- STEP 5: Polish scales ---
-explanatory_plot <- explanatory_plot +
-  # color palette (colorblind safe)
-  scale_color_manual(
-    values = c("Adelie" = "#0072B2", "Chinstrap" = "#E79F00", "Gentoo" = "#009E73")
-  ) +
-  scale_size_continuous(range = c(1.5, 5)) +
-  
-  # --- STEP 6: Facet by island ---
-  facet_wrap(~ island, ncol = 1) +
-  
-  # --- STEP 7: Custom theme ---
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position = "top",
-    plot.title = element_text(face = "bold", size = 16, margin = margin(b = 10)),
-    strip.background = element_rect(fill = "#F0F0F0", color = NA),
-    panel.border = element_rect(color = "gray80", fill = NA),
-    axis.title = element_text(face = "bold")
-  ) +
-  
-  # --- STEP 8: Clear labels ---
-  labs(
-    title = "Bill-Flipper Relationship Across Penguin Species & Islands",
-    subtitle = "Point size represents body mass | Shaded areas show 95% CI",
-    x = "Bill Length (mm)",
-    y = "Flipper Length (mm)",
-    color = "Species",
-    size = "Body Mass (g)",
-    caption = "Data: Palmer Penguins"
-  )
-
-
+ggplot(df, aes(x = bill_length_mm, 
+               y = flipper_length_mm)) +
+  geom_point(color = "blue")
 ```
+]
+
 
 ---
 
-```{r  out.width = "50%"}
-explanatory_plot
+## Mistake 1: Result
+
+```{r mistake1_demo_blind, echo=FALSE, fig.height=4}
+p_wrong <- ggplot(df, aes(x = bill_length_mm, 
+                          y = flipper_length_mm,
+                          color = "blue")) +
+  geom_point() +
+  ggtitle("?")
+
+p_right <- ggplot(df, aes(x = bill_length_mm, 
+                          y = flipper_length_mm)) +
+  geom_point(color = "blue") +
+  ggtitle("?")
+
+library(patchwork)
+p_wrong + p_right
 ```
 
 
+
 ---
 
-## Which species differ and how much?
 
-```{r differenceplot}
+## Mistake 1: Aesthetics in Wrong Place
 
-library(ggsignif)
-library(ggrepel)
+**The Error:** Putting data-dependent aesthetics outside `aes()` or static values inside `aes()`
 
- difference_plot <-ggplot(df, aes(x = species, y = body_mass_g, fill = species)) +
-  geom_violin(alpha = 0.4) +
-  geom_boxplot(width = 0.1, fill = "white", alpha = 0.8) +
-  # STATISTICAL ANNOTATION
-  ggsignif::geom_signif(
-    comparisons = list(c("Adelie", "Chinstrap"), c("Chinstrap", "Gentoo")),
-    map_signif_level = TRUE,
-    textsize = 3
-  ) +
-  # REFERENCE LINE
-  geom_hline(yintercept = 5000, linetype = "dashed", color = "gray50") +
-  annotate("text", x = 2.5, y = 5200, 
-           label = "Conservation Threshold", color = "gray50", size = 3) +
-  scale_fill_brewer(palette = "Set2") +
-  theme(legend.position = "none") +
-  labs(title = "Species Body Mass with Statistical Comparisons")
-
+.pull-left[
+```{r mistake1_wrong, eval = FALSE}
+# WRONG: color inside aes() but as static string
+ggplot(df, aes(x = bill_length_mm, 
+               y = flipper_length_mm,
+               color = "blue")) +  # Creates a legend!
+  geom_point()
 ```
+]
 
----
-## Which species differ and how much?
-
-```{r  out.width = "50%"}
-difference_plot
+.pull-right[
+```{r mistake1_right, eval = FALSE}
+# CORRECT: static color outside aes()
+ggplot(df, aes(x = bill_length_mm, 
+               y = flipper_length_mm)) +
+  geom_point(color = "blue")
 ```
+]
+
+**What happens:** `"blue"` is treated as data, creating one group called "blue"
 
 ---
 
-## Excercise
 
-# 10 min.
+## Mistake 1: Result
 
-- Create violin plots of `bill_length_mm` by **island**. 
-- Add significance brackets `comparing Biscoe` vs. `Dream islands` and `Dream` vs. `Torgersen`. 
-- Use a colorblind-friendly palette and remove the legend.
+```{r mistake1_demo, echo=FALSE, fig.height=4}
+p_wrong <- ggplot(df, aes(x = bill_length_mm, 
+                          y = flipper_length_mm,
+                          color = "blue")) +
+  geom_point() +
+  ggtitle("WRONG: color = 'blue' inside aes()")
 
----
+p_right <- ggplot(df, aes(x = bill_length_mm, 
+                          y = flipper_length_mm)) +
+  geom_point(color = "blue") +
+  ggtitle("CORRECT: color = 'blue' outside aes()")
 
-```{r island}
-# SOLUTION
-
-violin_plot <- ggplot(df, aes(x = island, y = bill_length_mm, fill = island)) +
-  geom_violin(alpha = 0.5) +
-  geom_boxplot(width = 0.1, fill = "white") +
-  ggsignif::geom_signif(
-    comparisons = list(c("Biscoe", "Dream"), c("Dream", "Torgersen")),
-    map_signif_level = TRUE
-  ) +
-  scale_fill_brewer(palette = "Set2") +
-  theme_minimal() +
-  labs(
-    title = "Bill Length Variation Across Islands",
-    subtitle = "Violins show distribution; boxes show quartiles",
-    x = "Island",
-    y = "Bill Length (mm)"
-  ) +
-  theme(legend.position = "none")
-```
-
----
-
-```{r out.width = "50%"}
-violin_plot
+library(patchwork)
+p_wrong + p_right
 ```
 
 
 ---
 
+## Mistake 2: Forgetting + at Line End
 
-## Exercise II
+**The Error:** Putting `+` at the beginning of a line instead of the end
 
-# 10 min.
+.pull-left[
+```{r mistake2_wrong, eval = FALSE}
+# WRONG
+ggplot(df, aes(x = species, y = body_mass_g))
+  + geom_boxplot()
+  + theme_bw()
+```
+]
+
+.pull-right[
+```{r mistake2_right, eval = FALSE}
+# CORRECT
+ggplot(df, aes(x = species, y = body_mass_g)) +
+  geom_boxplot() +
+  theme_bw()
+```
+]
+
+**What happens:** R thinks the expression is complete and `+` starts a new (invalid) expression
+---
 
 
-- Make a scatter plot: `bill_length_mm` vs. `flipper_length_mm` (colored by species). 
-- Label the 5 penguins with highest body mass with their actual mass values. 
-- Add a vertical reference line at the mean bill length and label it. 
-- Use theme_bw() and professional labels.
+## Mistake 3: Missing Values Silent Removal
+
+**The Error:** Not noticing that ggplot silently removes missing values
+
+```{r mistake3_demo, echo=TRUE,fig.width=4, fig.height=2, out.width='40%', fig.align='center'}
+
+df_with_na <- penguins  # keep NAs
+
+# This produces a warning but still plots!
+ggplot(df_with_na, aes(x = bill_length_mm, y = flipper_length_mm)) +
+  geom_point()
+```
+
+**The Warning:** `Removed 2 rows containing missing values`
+
+**Lesson:** Always check for missing values first!
+
+---
+
+## Mistake 4 ?
+
+.pull-left[
+```{r mistake4_right_blind, eval = FALSE}
+
+ggplot(df, aes(x = factor(year), y = body_mass_g)) +
+  geom_boxplot()
+```
+]
+
+.pull-right[
+```{r mistake4_wrong_blind, eval = FALSE}
+
+ggplot(df, aes(x = year, y = body_mass_g)) +
+  geom_boxplot()
+
+```
+]
+
+
+---
+## Mistake 4: Wrong Data Type
+
+**The Error:** Treating continuous data as categorical or vice versa
+
+
+.pull-left[
+```{r mistake4_right, eval = FALSE}
+# CORRECT: convert to factor
+ggplot(df, aes(x = factor(year), y = body_mass_g)) +
+  geom_boxplot()
+```
+]
+
+
+.pull-right[
+```{r mistake4_wrong, eval = FALSE}
+# WRONG: year treated as continuous
+ggplot(df, aes(x = year, y = body_mass_g)) +
+  geom_boxplot()
+# Error: Continuous value supplied to discrete scale
+```
+]
+
+---
+
+## Mistake 5: Overplotting
+
+**The Error:** Too many points overlapping, hiding the true distribution
+
+```{r mistake5_demo, echo=FALSE, fig.height=4}
+# Simulate larger dataset for demonstration
+set.seed(123)
+large_df <- data.frame(
+  x = rnorm(5000),
+  y = rnorm(5000),
+  group = sample(c("A", "B"), 5000, replace = TRUE)
+)
+
+p_overplot <- ggplot(large_df, aes(x = x, y = y)) +
+  geom_point() +
+  ggtitle("Overplotting: 5000 points")
+
+p_alpha <- ggplot(large_df, aes(x = x, y = y)) +
+  geom_point(alpha = 0.1) +
+  ggtitle("Solution: alpha = 0.1")
+
+p_hex <- ggplot(large_df, aes(x = x, y = y)) +
+  geom_hex(bins = 30) +
+  ggtitle("Solution: geom_hex()")
+
+p_overplot + p_alpha + p_hex + plot_layout(ncol = 3)
+```
+
+---
+
+##  Statistical Principles in Visualization
+
+---
+
+## Penguin Example
+
+Let's create a synthetic example with penguin data patterns:
+
+```{r simpson_data, echo=TRUE}
+# Create synthetic data 
+set.seed(42)
+
+# Three islands with different characteristics
+
+island_data <- bind_rows(
+  tibble(
+    island = "Torgersen",
+    bill_length = rnorm(50, 35, 3),
+    body_mass_base = rnorm(50, 3000, 200)
+  ) %>%
+    mutate(body_mass = body_mass_base - 20 * (bill_length - 35)),
+  tibble(
+    island = "Biscoe",
+    bill_length = rnorm(50, 45, 3),
+    body_mass_base = rnorm(50, 5000, 300)
+  ) %>%
+    mutate(body_mass = body_mass_base - 30 * (bill_length - 45)),
+  tibble(
+    island = "Dream",
+    bill_length = rnorm(50, 40, 3),
+    body_mass_base = rnorm(50, 4000, 250)
+  ) %>%
+    mutate(body_mass = body_mass_base - 25 * (bill_length - 40))
+) %>%
+  select(island, bill_length, body_mass)
+```
+
+---
+
+## The Aggregate View
+
+.pull-left[
+```{r simpson_aggregate_0, eval = FALSE}
+# AGGREGATE: Looks like positive correlation!
+ggplot(island_data, aes(x = bill_length, y = body_mass)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Aggregate View: Positive Correlation",
+       subtitle = "Bill length vs Body Mass (All Islands Combined)")
+```
+]
+
+.pull-right[
+```{r ref.label = "simpson_aggregate", echo = FALSE}
+```
+]
+
+
+---
+
+## The Aggregate View
+
+.pull-left[
+```{r simpson_aggregate, eval = FALSE}
+# AGGREGATE: Looks like positive correlation!
+ggplot(island_data, aes(x = bill_length, y = body_mass)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Aggregate View: Positive Correlation",
+       subtitle = "Bill length vs Body Mass (All Islands Combined)")
+```
+]
+
+.pull-right[
+```{r ref.label = "simpson_aggregate", echo = FALSE}
+```
+]
+
+**Conclusion:** Longer bills = heavier penguins?
+
+---
+
+
+## The Stratified View
+
+.pull-left[
+```{r simpson_stratified_0, eval = FALSE}
+# STRATIFIED: Negative correlation within each island!
+ggplot(island_data, aes(x = bill_length, y = body_mass, 
+                        color = island)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Stratified View: Negative Correlation",
+       subtitle = "Within each island, longer bills = lighter penguins!")
+```
+]
+
+.pull-right[
+```{r ref.label = "simpson_stratified", echo = FALSE}
+```
+]
+---
+
+
+## The Stratified View
+
+.pull-left[
+```{r simpson_stratified, eval = FALSE}
+# STRATIFIED: Negative correlation within each island!
+ggplot(island_data, aes(x = bill_length, y = body_mass, 
+                        color = island)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Stratified View: Negative Correlation",
+       subtitle = "Within each island, longer bills = lighter penguins!")
+```
+]
+
+.pull-right[
+```{r ref.label = "simpson_stratified", echo = FALSE}
+```
+]
+
+**Reality:** Within each island, longer bills = lighter penguins! The aggregate is confounded by island differences.
+
+
+---
+
+
+## Simpson's Paradox: When Aggregation Misleads
+
+**Definition:** A trend appears in different groups of data but disappears or reverses when combined.
+
+**Why it matters:** Visualization choices can reveal or hide this paradox!
+
+---
+
+## Simpson's Paradox: Side by Side
+
+```{r simpson_compare, echo=FALSE, fig.height=5}
+p_agg <- ggplot(island_data, aes(x = bill_length, y = body_mass)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", size = 1.5) +
+  labs(title = "Aggregate: Positive Correlation",
+       x = "Bill Length", y = "Body Mass") +
+  theme_bw()
+
+p_strat <- ggplot(island_data, aes(x = bill_length, y = body_mass, 
+                                   color = island)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, size = 1.5) +
+  labs(title = "Stratified: Negative Within Islands",
+       x = "Bill Length", y = "Body Mass") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+p_agg + p_strat + plot_annotation(
+  title = "Simpson's Paradox: Same Data, Different Stories",
+  subtitle = "Always consider confounding variables!"
+)
+```
+
+---
+
+## Exercise: Simpson's Paradox Hands-On
+
+**Task (15 min):**
+
+1. Load the `mpg` dataset from ggplot2: `data(mpg)`
+2. Create a scatter plot of `hwy` (highway mpg) vs `displ` (engine displacement)
+3. Add a regression line (what's the trend?)
+4. Now color by `class` (vehicle class) and add separate regression lines
+5. **Question:** Does the overall trend match the within-class trends?
+
+**Hint:** Use `geom_smooth(method = "lm", se = FALSE)`
+
+---
+
+## Exercise: Simpson's Paradox Solution
+
+.pull-left[
+```{r simpson_exercise_solution_blind, eval=FALSE}
+data(mpg)
+
+# Step 1: Aggregate view
+p_mpg_agg <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Aggregate: Negative Trend",
+       subtitle = "Larger engines = lower highway MPG")
+
+# Step 2: Stratified by class
+p_mpg_strat <- ggplot(mpg, aes(x = displ, y = hwy, color = class)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "By Vehicle Class",
+       subtitle = "Trend varies by class")
+
+p_mpg_agg + p_mpg_strat
+```
+]
+
+
+.pull-right[
+
+```{r simpson_exercise_solution, echo=FALSE, out.width='100%'}
+data(mpg)
+
+# Step 1: Aggregate view
+p_mpg_agg <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Aggregate: Negative Trend",
+       subtitle = "Larger engines = lower highway MPG")
+
+# Step 2: Stratified by class
+p_mpg_strat <- ggplot(mpg, aes(x = displ, y = hwy, color = class)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "By Vehicle Class",
+       subtitle = "Trend varies by class")
+
+p_mpg_agg + p_mpg_strat
+```
+]
+
+---
+
+### Principle 1
+
+```{r baseline_demo_blind, echo=TRUE, fig.height=5,  out.width='50%'}
+# Create data showing effect of treatment
+treatment_data <- tibble(
+  group = c("Control", "Treatment", "Control", "Treatment"),
+  time = c("Before", "Before", "After", "After"),
+  score = c(50, 52, 55, 70)
+)
+
+
+p_treated <- ggplot(filter(treatment_data, time == "After"), 
+                aes(x = group, y = score, fill = group)) +
+  geom_col() +
+  labs(title = "Treatment") +
+  theme_bw()
+
+p_treated
+```
+
+---
+
+### Principle 1: The Importance of Baselines
+
+**Concept:** Always show the baseline or reference point for comparison.
+
+```{r baseline_demo, echo=TRUE, fig.height=4,  out.width='60%'}
+# GOOD: Showing change from baseline
+p_good <- ggplot(treatment_data, aes(x = time, y = score, group = group, color = group)) +
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  labs(title = "GOOD: Change from baseline",
+       subtitle = "Now we see both groups improved!") +
+  theme_bw()
+
+p_treated + p_good
+```
+
+
+---
+
+## Principle 2
+
+```{r uncertainty_demo_blind, echo=TRUE, fig.height=4, out.width='60%'}
+set.seed(123)
+uncertainty_data <- tibble(
+  group = rep(c("A", "B", "C"), each = 30),
+  value = c(rnorm(30, 50, 10), rnorm(30, 55, 15), rnorm(30, 60, 5))
+)
+
+p_means <- uncertainty_data %>%
+  group_by(group) %>%
+  summarise(mean_val = mean(value)) %>%
+  ggplot(aes(x = group, y = mean_val, fill = group)) +
+  geom_col() +
+  labs(title = "What do we see?") +
+  theme_bw()
+
+p_means
+```
+
+---
+
+### Principle 2: Visualizing Uncertainty
+
+**Concept:** Point estimates without intervals can be misleading.
+
+```{r uncertainty_demo, echo=TRUE, fig.height=4, out.width='60%'}
+# GOOD: With error bars
+p_error <- ggplot(uncertainty_data, aes(x = group, y = value, fill = group)) +
+  stat_summary(fun = mean, geom = "bar") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  labs(title = "Means with 95% CI",
+       subtitle = "Overlap suggests no significant difference") +
+  theme_bw()
+
+p_means + p_error
+```
+---
+
+
+### Principle 3
+
+
+```{r axis_manipulation_0, echo=TRUE, fig.height=4, out.width='60%'}
+trend_data <- tibble(
+  year = 2010:2020,
+  value = c(95, 94, 93, 94, 95, 96, 95, 94, 93, 92, 91)
+)
+
+p_trun <- ggplot(trend_data, aes(x = year, y = value)) +
+  geom_line(size = 1.5, color = "red") +
+  geom_point(size = 3) +
+  coord_cartesian(ylim = c(85, 100)) +  
+  theme_bw()
+
+p_trun
+```
+
+---
+
+### Principle 3: Cherry-Picking & Axis Manipulation
+
+**Concept:** How axis limits can change the story
+
+```{r axis_manipulation, echo=TRUE, fig.height=4, out.width='60%'}
+
+# MANIPULATED: Truncated y-axis exaggerates change
+# HONEST: Full y-axis 
+p_honest <- ggplot(trend_data, aes(x = year, y = value)) +
+  geom_line(size = 1.5, color = "blue") +
+  geom_point(size = 3) +
+  coord_cartesian(ylim = c(0, 100)) +  # Full range
+  labs(title = "HONEST: y-axis 0-100",
+       subtitle = "Actually a modest 4% change") +
+  theme_bw()
+
+p_trun + p_honest
+```
+
+---
+
+### Fix the Mistakes
+
+10 min.
+
+The following code contains 5 common ggplot2 mistakes. Fix them!
+
+```{r exercise3_broken, eval=FALSE}
+# BROKEN CODE - fix the mistakes!
+library(ggplot2)
+
+
+ggplot(penguins, aes(x = species, y = body_mass_g)) 
+  + geom_violin()
+  + aes(fill = "blue")
+  + scale_fill_manual(values = c("red", "green", "blue"))
+  + theme_minimal
+  + labs(title = "Penguin Mass by Species")
+```
+
+**Hints:**
+- Check where the `+` signs are
+- Is `fill` being used correctly?
+- Did you call `theme_minimal()` as a function?
+- Are the manual fill values appropriate?
 
 ---
 
 ## Solution
 
-```{r groupcomp}
-top_5 <- df %>%
-  slice_max(order_by = body_mass_g, n = 5)
+```{r exercise3_solution, fig.width=4, fig.height=3, out.width='60%'}
 
-# Calculate ref
-mean_bill <- mean(df$bill_length_mm)
-
-scatterplot <- ggplot(df, aes(x = bill_length_mm,
-               y = flipper_length_mm,
-               color = species)) +
-  geom_point(alpha = 0.6, size = 2) +
-  
-  # DATA LABELS for outliers
-  geom_label_repel(
-    data = top_5,
-    aes(label = round(body_mass_g)),  # Round for clean labels
-    nudge_x = 0.5,
-    min.segment.length = 0,
-    size = 3
-  ) +
-  
-  # REFERENCE LINE + annotation
-  geom_vline(xintercept = mean_bill, linetype = "dashed", color = "gray50") +
-  annotate("text", x = mean_bill + 2, y = 225, 
-           label = paste("Mean:", round(mean_bill, 1), "mm"), 
-           color = "gray50", size = 3, hjust = 0) +
-  
-  scale_color_brewer(palette = "Dark2") +
-  theme_bw(base_size = 12) +
-  labs(
-    title = "Penguin Measurements with Outlier Highlights",
-    subtitle = "Labels show body mass (g) for 5 heaviest individuals",
-    x = "Bill Length (mm)",
-    y = "Flipper Length (mm)",
-    color = "Species"
-  )
+ggplot(penguins, aes(x = species, y = body_mass_g, fill = species)) +
+  geom_violin() +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  labs(title = "Penguin Mass by Species")
 ```
+
 
 ---
+## Summary: Key Takeaways
 
-
-```{r out.width = "60%"}
-scatterplot
-```
-
+1. **Visualization is integral to the research cycle** - not just the end product
+2. **Learn from mistakes** - common errors teach us how ggplot2 thinks
+3. **Simpson's Paradox** - always consider confounding variables and stratify
+4. **Show uncertainty** - error bars, confidence intervals, distributions
+5. **Avoid manipulation** - honest axes, full context, no cherry-picking
+6. **The Datasaurus Dozen** - never trust summary statistics alone
 
 ---
 
