@@ -1,0 +1,125 @@
+
+---
+title: "Data Literacy: Introduction to R"
+subtitle: "Final Outlook: Where to Go from Here"
+author: "Veronika Batzdorfer"
+date: "2026-05-22"
+presenter: Veronika
+editor_options: 
+  chunk_output_type: console
+---
+layout: true 
+
+```{r child = "./content/config/sessions_setup.Rmd"}
+```
+
+---
+
+class: center, middle
+
+# Where to Go from Here
+## Your R Journey Has Just Begun
+
+---
+
+## What You Have Learned
+
+.pull-left[
+**Data fundamentals**
+- Import, wrangle, reshape
+- Tidy data principles
+- Missing data handling
+
+**Visualization**
+- ggplot2 grammar of graphics
+- From exploration to publication
+- Statistical principles & biases
+]
+
+.pull-right[
+**Analysis**
+- Descriptive statistics
+- Regression, ANOVA, GLM
+- Model diagnostics & reporting
+
+**Reproducibility**
+- RMarkdown
+- Version control with Git
+- LLMs as assistants (not replacements)
+]
+
+---
+
+
+## Key Resources to Keep Learning
+
+.pull-left[
+**Free books (online)**
+- [R for Data Science](https://r4ds.had.co.nz) — Wickham & Grolemund
+- [Advanced R](https://adv-r.hadley.nz) — Hadley Wickham
+- [ggplot2: Elegant Graphics](https://ggplot2-book.org) — Hadley Wickham
+- [Tidy Modeling with R](https://www.tmwr.org) — Kuhn & Silge
+- [R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/) — Xie et al.
+]
+
+.pull-right[
+**Communities**
+- [RStudio Community](https://community.rstudio.com)
+- [Stack Overflow: [r] tag](https://stackoverflow.com/questions/tagged/r)
+- [Mastodon: #rstats](https://fosstodon.org/tags/rstats)
+- Local R User Groups (useR! conferences)
+
+**Practice**
+- [Tidy Tuesday](https://github.com/rfordatascience/tidytuesday) — weekly data viz challenge
+- [Kaggle](https://kaggle.com) — competitions & datasets
+- Your own research questions
+]
+
+---
+
+## Beyond the Basics: What Comes Next
+
+| Topic | Why It Matters | Starting Point |
+|-------|-------------|----------------|
+| **Quarto** | Next-gen RMarkdown — better cross-references, multilingual | `quarto.org` |
+| **Git + GitHub** | Version control is non-negotiable for reproducibility | [Happy Git with R](https://happygitwithr.com) |
+| **`targets`** | Pipeline tools for complex, long-running analyses | `targets` package |
+| **`tidymodels`** | Unified framework for modeling, resampling, tuning | [TMwR book](https://www.tmwr.org) |
+| **`shiny`** | Interactive web apps from R | [Mastering Shiny](https://mastering-shiny.org) |
+| **Bayesian stats** | `brms` makes Stan accessible from R | [Bayes Rules!](https://www.bayesrulesbook.com) |
+
+---
+
+## A Final Word on Reproducibility
+
+> *"An article about computational science in a scientific publication is not the scholarship itself, it is merely advertising of the scholarship. The actual scholarship is the complete software development environment and the complete set of instructions which generated the figures."*
+>
+> — Jonathan Buckheit & David Donoho, 1995
+
+**What this means for you:**
+- Your `.Rmd` is not the analysis — it is the *recipe* for the analysis
+- Share your code, your data (when possible), and your environment (`renv`)
+- Document your LLM prompts as you document your methods
+- Future you — and your reviewers — will thank you
+
+---
+
+class: center, middle
+
+# Thank You
+
+---
+
+
+```{r echo=FALSE, fig.width=4, fig.height=3,out.width='60%' }
+woRkshoptools::include_picture("./qr.png")
+```
+
+
+
+
+
+
+
+
+
