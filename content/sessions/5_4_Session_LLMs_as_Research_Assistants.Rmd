@@ -26,23 +26,22 @@ class: center, middle
 .pull-left[
 **The reality**
 - LLMs are already in your workflow
-- They will not replace R skills — they amplify them
-- But only if you know how to verify what they give you
+- They will not replace R skills
+- But only if you verify 
 ]
 
 .pull-right[
-**Today’s principles**
+**Principles**
 1. Privacy first: local/open-source models
 2. Trust but verify: audit every line
 3. Structured grounding: Wikipedia API reduces hallucination
 4. Reproducibility: prompts are part of your methods
 ]
 
-.footnote[This session assumes no paid subscriptions. Everything runs locally or via free tiers.]
 
 ---
 
-## The Landscape: Local vs. Cloud
+### The Landscape: Local vs. Cloud
 
 | Option | Setup | Cost | Privacy | Best For |
 |--------|-------|------|---------|----------|
@@ -51,14 +50,13 @@ class: center, middle
 | **Hugging Face** (API) | Free tier | Free | Medium | Experimentation |
 | **GitHub Copilot** | IDE plugin | Subscription | Low | Autocomplete |
 
-**For this course:** We focus on **Ollama** (local) and **Wikipedia API** (structured knowledge) because they require zero subscriptions and work offline.
+**For this course:** We focus on **Ollama** (local) and **Wikipedia API** (structured knowledge) because they require zero subscriptions.
 
 ---
 
 ## Setup Check (2 Minutes)
 
-**What to say:**
-> "If you want to follow along with local models, install Ollama from ollama.com and run `ollama pull llama3.2` in your terminal. If you cannot install software, we also show API-based alternatives you can call from R with an internet connection."
+> If you want to follow along with local models, install Ollama from ollama.com and run `ollama pull llama3.2` in your terminal. 
 
 ```{r setup-check, eval = FALSE}
 # Check if you have the key packages
@@ -80,10 +78,9 @@ library(tidyverse)
 
 ---
 
-## Principle 1: The Prompt is Part of Your Method
+### 1: Prompt is Part of the Method
 
-**What to say:**
-> "In reproducible research, every transformation matters. If you used an LLM to generate your recoding scheme, your imputation strategy, or your model specification, that prompt is a methodological choice. Document it. A good practice: save prompts as text files in your project folder."
+> In reproducible research, every transformation matters. If you used an LLM to generate your recoding scheme, your imputation strategy, or your model specification, that prompt is a methodological choice. Document it. A good practice: save prompts as text files in your project folder.
 
 ```{r prompt-logging, eval = FALSE}
 # Save your prompt as a method file
@@ -98,10 +95,10 @@ writeLines(prompt, "methods/01_visualization_prompt.txt")
 
 ---
 
-## Principle 2: Use `ellmer` — One Interface, Many Models
+### 2: Use `ellmer` — One Interface, Many Models
 
-**What to say:**
-> "The `ellmer` package from Posit is the modern way to talk to LLMs from R. It abstracts away provider differences. You can switch from a local Ollama model to an OpenAI API endpoint by changing one line of code. This is crucial for reproducibility — your analysis logic stays the same even if the backend changes."
+**Interface:**
+> The `ellmer` package is the way to talk to LLMs from R. It abstracts away provider differences. You can switch from a local Ollama model to an OpenAI API endpoint by changing one line of code. This is crucial for reproducibility — your analysis logic stays the same even if the backend changes.
 
 .pull-left[
 ```{r ellmer-local, eval = FALSE}
@@ -154,10 +151,9 @@ Never let an LLM execute code unsupervised in your environment.
 
 ---
 
-## Principle 3: Structured Output — Force Precision
+#### 3: Structured Output — Force Precision
 
-**What to say:**
-> "LLMs are chatty. They wrap code in markdown fences, add explanations you do not need, and sometimes invent packages. `ellmer` supports structured outputs: you can force the model to return JSON with specific fields. This is essential for automated pipelines."
+> LLMs are chatty. They wrap code in markdown fences, add explanations you do not need, and sometimes invent packages. `ellmer` supports structured outputs: you can force the model to return JSON with specific fields. This is essential for automated pipelines.
 
 ```{r structured-output, eval = FALSE}
 # Define a JSON schema for structured responses
@@ -180,10 +176,14 @@ str(response)
 
 ---
 
-## Principle 4: Grounding with Wikipedia API
+### 4: Grounding with Wikipedia API
 
-**What to say:**
-> "LLMs hallucinate facts. A cheap and effective way to ground them is to fetch structured knowledge from Wikipedia via the WikipediR package, then feed that text into the prompt as context. This is a primitive form of Retrieval-Augmented Generation (RAG) — and it works remarkably well for domain concepts your students might ask about."
+> LLMs hallucinate facts. A cheap and effective way to ground them is to fetch structured knowledge from Wikipedia via the WikipediR package, then feed that text into the prompt as context. This is a primitive form of Retrieval-Augmented Generation (RAG).
+
+
+---
+
+### 4: Grounding with Wikipedia API
 
 ```{r wiki-grounding, eval = FALSE}
 # Fetch Wikipedia content as grounding context
@@ -208,7 +208,7 @@ response <- chat$chat(prompt)
 
 ---
 
-## Live Demo: Wikipedia + LLM Pipeline
+### Wikipedia + LLM Pipeline
 
 .pull-left[
 ```{r wiki-llm-pipeline, eval = FALSE}
@@ -244,11 +244,14 @@ This is a .highlight[Retrieval-Augmented Generation (RAG)] primitive — and it 
 
 ---
 
-## Principle 5: Iterative Refinement — The Chat Thread
+### 5: Iterative Refinement — The Chat Thread
 
-**What to say:**
-> "Good analysis is iterative. `ellmer` maintains conversation state in the chat object. You can ask for a plot, then ask to modify colors, then ask to add a regression line — and the model remembers the previous code. This mirrors how you would actually work: draft, review, refine."
 
+> Good analysis is iterative. `ellmer` maintains conversation state in the chat object. You can ask for a plot, then ask to modify colors, then ask to add a regression line — and the model remembers the previous code. This mirrors how you would actually work: draft, review, refine.
+
+
+---
+### 5: Iterative Refinement
 ```{r iterative-chat, eval = FALSE}
 chat <- chat_ollama(model = "llama3.2")
 
@@ -272,9 +275,9 @@ cat(v3)
 
 ---
 
-## TASK 1: Prompt Engineering Challenge
+#### TASK 1: Prompt Engineering Challenge
 
-# 10 min.
+##### 10 min.
 
 **Scenario:** You need to explain Simpson's Paradox to a non-technical stakeholder using the penguins dataset.
 
@@ -299,7 +302,7 @@ cat(v3)
 ```{r task1-bad, eval = FALSE}
 # BAD prompt
 bad <- "Explain Simpson's paradox"
-# Likely result: generic, wordy, no code, wrong examples
+
 ```
 ]
 
@@ -330,10 +333,15 @@ cat(response)
 
 ---
 
-## Principle 6: LLMs for Code Explanation, Not Just Generation
+### 6: LLMs for Code Explanation
 
-**What to say:**
-> "The most underrated use of LLMs is explaining code you inherited. Paste a gnarly base R snippet into the chat and ask for a tidyverse translation with line-by-line comments. This is safer than generation because the input code is ground truth — the LLM only restructures it."
+
+> The most underrated use of LLMs is explaining code you inherited. Paste a base R snippet into the chat and ask for a tidyverse translation with line-by-line comments. This is safer than generation because the input code is ground truth.
+
+
+
+---
+### 6: LLMs for Code Explanation
 
 .pull-left[
 ```{r explain-code, eval = FALSE}
@@ -364,9 +372,9 @@ cat(explanation)
 
 ---
 
-## TASK 2: Explain & Refactor
+#### TASK 2: Explain & Refactor
 
-# 10 min.
+#### 10 min.
 
 **Scenario:** You receive this code from a collaborator. It works but is unreadable.
 
@@ -393,7 +401,7 @@ original <- penguins[!is.na(penguins$bill_length_mm) & penguins$species=='Adelie
 ```
 
 ```{r task2-refactored}
-# LLM-refactored (expected output)
+# LLM-rewriten
 refactored <- penguins %>%
   filter(!is.na(bill_length_mm), species == "Adelie") %>%
   pull(body_mass_g)
@@ -402,7 +410,7 @@ refactored <- penguins %>%
 
 .pull-right[
 ```{r task2-verify}
-# Verification
+# Verify
 identical(original, refactored)
 ```
 
@@ -420,9 +428,6 @@ robust <- penguins %>%
 ---
 
 ## Principle 7: When LLMs Fail — A Hall of Shame
-
-**What to say:**
-> "LLMs are confident liars. They invent R packages, hallucinate function arguments, and generate code that runs but produces wrong results. Your job as a data analyst is to be a skeptic. Here are common failure modes with penguin data."
 
 ### Failure Mode 1: Hallucinated Packages
 
@@ -456,33 +461,11 @@ wrong_model <- lm(body_mass_g ~ species + flipper_length_mm,
 
 ---
 
-## TASK 3: Spot the Bug
+#### TASK 3: Spot the Bug
 
-# 10 min.
+### 10 min.
 
 **Scenario:** An LLM generated the following "perfect" analysis pipeline. Find 3 errors or questionable choices.
-
-```{r buggy-llm-code, eval = FALSE}
-# LLM-generated code (do not run blindly!)
-library(tidyverse)
-
-# "Remove all missing values" — dangerous!
-penguins_clean <- na.omit(penguins)
-
-# "Standardize all numeric variables" — includes year!
-penguins_scaled <- penguins_clean %>%
-  mutate(across(where(is.numeric), scale))
-
-# "Fit full model with all interactions"
-model <- lm(body_mass_g ~ .^2, data = penguins_scaled)
-
-# "Stepwise selection to find best model"
-best_model <- step(model, direction = "both", trace = 0)
-
-# "Report only significant coefficients"
-significant <- tidy(best_model) %>% filter(p.value < 0.05)
-print(significant)
-```
 
 **Your task:**
 1. Identify 3 problems (statistical, coding, or reproducibility).
@@ -490,9 +473,33 @@ print(significant)
 3. Ask a local LLM: *"Critique this code for reproducibility issues."* Does it catch the same problems?
 4. Rewrite the pipeline correctly.
 
+
+---
+#### TASK 3: Spot the Bug
+
+```{r buggy-llm-code, eval = FALSE}
+# LLM-generated code (do not run blindly!)
+library(tidyverse)
+
+penguins_clean <- na.omit(penguins)
+
+
+penguins_scaled <- penguins_clean %>%
+  mutate(across(where(is.numeric), scale))
+
+
+model <- lm(body_mass_g ~ .^2, data = penguins_scaled)
+
+
+best_model <- step(model, direction = "both", trace = 0)
+
+significant <- tidy(best_model) %>% filter(p.value < 0.05)
+print(significant)
+```
+
 ---
 
-## TASK 3: Solution & Discussion
+#### TASK 3: Solution 
 
 | Problem | Why It Is Dangerous |
 |---------|-------------------|
@@ -502,14 +509,10 @@ print(significant)
 | `step()` on same data | Overfitting; p-values invalid; stepwise is deprecated in modern practice |
 | Filtering by p < 0.05 | Publication bias in a single model; ignores effect size and domain knowledge |
 
-**Key insight:** The LLM produced *syntactically valid* R code that is *methodologically catastrophic*. Syntax checkers will not catch this. Only domain knowledge does.
 
 ---
 
-## Principle 8: LLMs + Wikipedia for Domain Exploration
-
-**What to say:**
-> "Before you analyze data, you need domain context. Wikipedia is a structured, versioned, and citation-linked knowledge base. Combining WikipediR with LLMs gives you a cheap literature-review assistant. The LLM synthesizes; Wikipedia grounds."
+##### 8: LLMs + Wikipedia for Domain Exploration
 
 .pull-left[
 ```{r wiki-explore, eval = FALSE}
@@ -548,14 +551,13 @@ cat(methods_text)
 - Free and programmatically accessible
 - Constrains the LLM to existing knowledge
 
-**Limitation:** Wikipedia is a starting point, not a primary source for publication.
 ]
 
 ---
 
-## TASK 4: Build a Grounded Caption
+#### TASK 4: Build a Grounded Caption
 
-# 10 min.
+#### 10 min.
 
 **Scenario:** You need a figure caption for a scatter plot of `bill_depth_mm` vs `bill_length_mm` by species.
 
@@ -570,13 +572,13 @@ cat(methods_text)
 
 ---
 
-## TASK 4: Solution Framework
+#### TASK 4: Solution Framework
 
 ```{r task4-solution, eval = FALSE}
 # Fetch and clean
 beak_page <- page_content("en", "wikipedia", page_name = "Beak")
 beak_text <- html_text(read_html(beak_page$parse$text$`*`))
-beak_clean <- substr(gsub("\s+", " ", beak_text), 1, 500)
+beak_clean <- substr(gsub("\\s+", " ", beak_text), 1, 500)
 
 # Constrained prompt
 prompt <- paste(
@@ -597,10 +599,14 @@ writeLines(paste("Wikipedia source:\n", beak_clean,
 
 ---
 
-## Principle 9: Automation — Batch-Processing with LLMs
+### 9: Automation — Batch-Processing with LLMs
 
-**What to say:**
-> "Once you trust your prompt, you can scale it. Map over a vector of column names, dataset descriptions, or file paths, and ask the LLM to generate documentation, variable labels, or analysis code for each. This is where LLMs become genuinely productive — but only after you have validated the prompt on a single case."
+
+> Once you trust your prompt, you can scale it. Map over a vector of column names, dataset descriptions, or file paths, and ask the LLM to generate documentation, variable labels, or analysis code for each. This is where LLMs become genuinely productive — but only after you have validated the prompt on a single case.
+
+
+---
+#### 9: Automation — Batch-Processing with LLMs
 
 ```{r batch-llm, eval = FALSE}
 # Auto-generate variable descriptions for a dataframe
@@ -627,11 +633,19 @@ tibble(variable = names(penguins_numeric), description = descriptions)
 
 ---
 
-## TASK 5: The Skeptical Review
+#### TASK 5: The Skeptical Review
 
-# 15 min.
+#### 15 min.
 
 **Scenario:** A student submits this "AI-assisted" analysis for homework. Review it.
+
+**Your review task:**
+1. Identify 4 methodological errors (not syntax errors).
+2. For each, state whether an LLM could plausibly have suggested it.
+
+
+---
+
 
 ```{r homework-review, eval = FALSE}
 # --- STUDENT SUBMISSION ---
@@ -659,57 +673,22 @@ results <- tidy(best) %>% filter(p.value < 0.05)
 print(results)
 ```
 
-**Your review task:**
-1. Identify 4 methodological errors (not syntax errors).
-2. For each, state whether an LLM could plausibly have suggested it.
-3. Rewrite ONE chunk correctly with a comment explaining your fix.
-4. Write a 3-bullet "Guidelines for AI-Assisted Homework" for the class.
 
 ---
 
-## TASK 5: Review Key Points
+## TASK 5: Key Points
 
 | Issue | LLM Plausible? | Correct Approach |
 |-------|---------------|------------------|
 | IQR outlier removal on entire dataset | Yes (common bad advice) | Domain knowledge: penguins have real size variation by species; stratify first |
 | Normalization before regression | Yes | Standardize only after train/test split; normalization destroys interpretability |
 | `step()` on same data | Yes (outdated textbooks) | Theory-driven model or penalized regression (glmnet) |
-| Filtering by p < 0.05 | Yes | Report full table with effect sizes; pre-register hypotheses |
+| Filtering by p < 0.05 | Yes | Report full table with effect sizes|
 
-**Class guideline:**
-- **Verify every data transformation** against domain knowledge.
-- **Never modify data based on a global statistic** (IQR, mean) without stratifying by known groups.
-- **Treat LLM output as a first draft** — peer review it as you would a colleague's code.
 
 ---
 
-## Summary: The LLM-Aware Research Cycle
-
-.pull-left[
-**The workflow**
-
-1. Ask Wikipedia (structured grounding)
-2. Draft prompt (role, audience, constraints)
-3. Generate code (structured output preferred)
-4. Audit & verify (syntax + methodology)
-5. Run in R (you are the executor)
-6. Log provenance (prompts are methods)
-]
-
-.pull-right[
-**The golden rules**
-
-- Local models for sensitive data
-- `ellmer` for provider independence
-- Wikipedia for grounded generation
-- Prompts are part of methods
-- LLMs generate drafts, not decisions
-- The most dangerous code is code that runs
-]
-
----
-
-## The Seven Principles (Quick Reference)
+### Summary
 
 | # | Principle | Defense Against |
 |---|-----------|---------------|
