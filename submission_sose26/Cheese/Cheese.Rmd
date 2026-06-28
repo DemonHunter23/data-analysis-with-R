@@ -1,0 +1,258 @@
+---
+title: 'Analyse von Käseeigenschaften: Zusammenhänge zwischen Milchsorten, Herkunft
+  und Fettgehalt'
+author: "Anton"
+date: "`r format(Sys.Date(), '%d.%m.%Y')`"
+lang: de-de
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    df_print: paged
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+options(scipen = 15)
+```
+
+# Einleitung
+
+In dieser Analyse wird ein Datensatz der Website *cheese.com* (bereitgestellt durch das *TidyTuesday*-Projekt) verwendet. Dieser Datensatz enthält Informationen zu verschiedenen Käsesorten aus aller Welt, darunter die Herkunftsländer, die verwendete Milchsorte und der Fettgehalt.
+
+Ziel der Analyse ist es, herauszufinden, ob es statistische Zusammenhänge zwischen diesen Merkmalen gibt. Dabei werden zwei Hypothesen betrachtet:
+
+1. **Hypothese 1:** Es gibt einen signifikanten Zusammenhang zwischen dem Herkunftsland eines Käses und der verwendeten Milchsorte.
+2. **Hypothese 2:** Der durchschnittliche Fettgehalt des Käses ist abhängig von der verwendeten Milchsorte.
+
+# Datenaufbereitung
+
+Zunächst wird der Datensatz geladen und für die spätere Analyse vorbereitet.
+
+```{r load-data}
+library(tidyverse)
+library(tidytuesdayR)
+library(maps)
+
+# Daten laden (optional auch .csv Datei herunterladen und Daten davon laden)
+tuesdata <- tidytuesdayR::tt_load('2024-06-04')
+cheeses <- tuesdata$cheeses
+
+# Daten anschauen, um herauszufinden, welche Daten tidied werden müssen
+head(cheeses |> select(cheese, milk, country, fat_content), 10)
+```
+
+Die Rohdaten zeigen, dass einige Variablen noch passend formatiert werden müssen. Der Fettgehalt (`fat_content`) ist als Text gespeichert und enthält teilweise Spannen (z. B. "40-46%"). Für Texte, die nur eine Zahl enthalten, wird diese übernommen. Wenn eine Spanne angegeben ist, wird der Mittelwert berechnet. Angaben ohne Zahlen werden als fehlende Werte (`NA`) behandelt.
+
+Einige Käsesorten weisen mehrere Einträge für das Herkunftsland oder die verwendete Milchsorte auf. Für die explorative Datenanalyse (Visualisierung) sollen diese zusätzlichen Einträge dargestellt werden. Daher wird hierfür ein Datensatz erstellt, der Mehrfacheinträge aufschlüsselt. 
+
+Um jedoch bei den späteren statistischen Tests die Voraussetzung der unabhängigen Beobachtungen (ein Käse = ein Datenpunkt) einzuhalten und Verfälschungen zu vermeiden, wird hierfür ein separater Datensatz erstellt, der nur den jeweils ersten Eintrag verwendet.
+
+```{r data-cleaning}
+# Fettgehalt zu Zahl wandeln, inklusive Mittelwertbildung
+parse_fat_content <- function(fat_str) {
+  if (is.na(fat_str) || fat_str == "") return(NA_real_)
+  digits <- unlist(str_extract_all(fat_str, "\\d+"))
+  if (length(digits) == 0) return(NA_real_)
+  return(mean(as.numeric(digits), na.rm = TRUE))
+}
+
+# Datensatz für die Visualisierung (EDA), Mehrfacheinträge aufschlüsseln
+cheeses_eda <- cheeses |>
+  mutate(
+    fat_numeric = sapply(fat_content, parse_fat_content),
+    milk = str_to_lower(milk)
+  ) |>
+  separate_rows(milk, sep = ",\\s*") |>
+  separate_rows(country, sep = ",\\s*") |>
+  mutate(
+    milk = as.factor(str_trim(milk)),
+    country = str_trim(country)
+  )
+
+# Datensatz für die Berechnungen, nur der erste Eintrag jeweils
+cheeses_stats <- cheeses |>
+  mutate(
+    fat_numeric = sapply(fat_content, parse_fat_content),
+    primary_milk = str_to_lower(str_trim(str_extract(milk, "^[^,]+"))),
+    primary_country = str_trim(str_extract(country, "^[^,]+"))
+  )
+```
+
+# Explorative Datenanalyse
+
+In diesem Abschnitt werden die Daten visuell dargestellt und beschrieben, um einen ersten Eindruck der Verteilungen und möglichen Muster zu bekommen.
+
+## Verteilung der Milchsorten nach Herkunftsland
+
+Zunächst wird die Verteilung der verschiedenen Milchsorten auf die Länder betrachtet. Da ein Land auf einer Karte nur eine einzige Farbe haben kann, wird für jede Milchsorte eine eigene Weltkarte erstellt. Die Skala entspricht dem prozentualen Anteil dieser Milchsorte an den erfassten Käsesorten des jeweiligen Landes.
+
+```{r plot-world-map-faceted, fig.width=10, fig.height=15, out.width="100%"}
+# Berechnung der prozentualen Anteile jeder Milchsorte pro Land
+milk_props <- cheeses_eda |>
+  drop_na(country, milk) |>
+  mutate(country = case_when(
+    country == "United Kingdom" ~ "UK",
+    country == "United States" ~ "USA",
+    TRUE ~ country
+  )) |>
+  count(country, milk) |>
+  group_by(country) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup()
+
+# Laden der Weltkarte
+world_map_data <- map_data("world")
+
+# Zusammenführen der Kartendaten mit den berechneten Anteilen
+map_faceted_data <- world_map_data |>
+  inner_join(milk_props, by = c("region" = "country"))
+
+# Einfärbung der Weltkarten
+ggplot() +
+  # Grau für fehlende Daten
+  geom_polygon(data = world_map_data, aes(x = long, y = lat, group = group), 
+               fill = "grey90", color = "white", linewidth = 0.1) +
+  # Länder nach Anteil einfärben
+  geom_polygon(data = map_faceted_data, aes(x = long, y = lat, group = group, fill = prop)) +
+  # 2 Karten pro Spalte, dass die Karten eine einigermaßen lesbare Größe haben
+  facet_wrap(~ milk, ncol = 2) +
+  # Farbskala Viridis verwenden
+  scale_fill_viridis_c(labels = scales::percent_format(), option = "viridis", name = "Anteil im Land") +
+  # Kartenausschnitt zentrieren und skalieren
+  coord_fixed(ratio = 1.3, xlim = c(-130, 150), ylim = c(-50, 70)) +
+  labs(
+    title = "Globale Verteilung der Milchsorten in der Käseproduktion",
+    subtitle = "Relative Anteile der jeweiligen Milchsorte pro Land",
+    x = "",
+    y = ""
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(face = "bold", size = 18),
+    strip.text = element_text(face = "bold", size = 14, textTransform = toupper),
+    strip.background = element_rect(fill = "grey95", color = NA)
+  )
+```
+
+Anhand der Visualisuerung ist deutlich zu erkennen, dass Kuhmilch ("cow") in den meisten Ländern dominiert. Ziegen- ("goat") und Schafsmilch ("sheep") sind ebenfalls sehr stark verbreitet und stellen in einigen Ländern sogar den Hauptanteil dar. Exotischere Milchsorten (wie Büffel oder Yak) sowie extreme Nischensorten (wie Kamel, Elch oder Esel) sind hingegen auf einzelne Regionen oder sogar nur auf einzelne Länder beschränkt.
+
+## Fettgehalt nach Milchsorte
+
+Als Nächstes wird der Fettgehalt der Käsesorten betrachtet. Um einen groben Überblick zu bekommen, wird zunächst eine Übersichtstabelle mit dem durchschnittlichen Fettgehalt der verschiedenen Milchsorten generiert.
+
+```{r fat-summary-table}
+# Tabelle mit Durchschnittswerten pro Milchsorte
+fat_summary <- cheeses_eda |>
+  drop_na(fat_numeric, milk) |>
+  group_by(milk) |>
+  summarise(
+    count_cheeses = n(),
+    mean_fat = round(mean(fat_numeric), 2),
+    median_fat = round(median(fat_numeric), 2)
+  ) |>
+  arrange(desc(count_cheeses))
+
+fat_summary
+```
+
+Die Tabelle zeigt, dass die meisten Datenpunkte für Kuh-, Ziegen- und Schafsmilch vorliegen. Der durchschnittliche Fettgehalt liegt über fast alle Sorten hinweg bei etwa 35 bis 45 Prozent, mit Ausnahme der exotischeren Milchsorten, die jeweils nur einen Datenpunkt aufweisen.
+
+Um die genaue Verteilung der Werte besser zu visualisieren, wird zusätzlich ein Violin-Plot erstellt.
+
+```{r plot-fat-milk-violin, fig.width=8, fig.height=5.3, out.width="100%"}
+cheeses_eda |>
+  drop_na(fat_numeric, milk) |>
+  group_by(milk) |> filter(n() > 1) |> ungroup() |>
+  ggplot(aes(x = milk, y = fat_numeric, fill = milk)) +
+  geom_violin(alpha = 0.3, color = NA, trim = FALSE) +
+  geom_jitter(width = 0.1, alpha = 0.5, size = 1.5, color = "darkslategray") +
+  scale_fill_viridis_d(option = "viridis", alpha = 0.8) +
+  labs(
+    title = "Verteilung des Fettgehalts nach Milchsorte",
+    x = "Milchsorte",
+    y = "Fettgehalt in %"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+Anhand der Visualisierung wird deutlich, dass die verschiedene Milchsorten alle eine breite und relativ ähnliche Verteilung des Fettgehalts aufweisen.
+
+# Statistische Tests
+
+Nach der reinen Visualisierung der Daten werden die beiden anfangs aufgestellten Hypothesen nun mit statistischen Tests überprüft. Das Signifikanzniveau wird für beide Tests auf 5% (0.05) festgelegt.
+
+## Hypothese 1: Herkunftsland und Milchsorte
+
+Die erste Hypothese geht davon aus, dass ein Zusammenhang zwischen dem Herkunftsland und der verwendeten Milchsorte besteht. Da beides Kategorien (Textwerte) sind, eignet sich hierfür ein Chi-Quadrat-Test. 
+
+Damit der Test korrekte Ergebnisse liefert, müssen die Gruppen groß genug sein. Daher werden Länder und Milchsorten mit weniger als 5 Einträgen herausgefiltert.
+
+```{r test-hypothese-1}
+# Datensatz für den Test filtern
+cheeses_chi <- cheeses_stats |>
+  drop_na(primary_country, primary_milk) |>
+  # Nur Länder mit >= 5 Einträgen
+  group_by(primary_country) |> filter(n() >= 5) |> ungroup() |>
+  # Nur Milchsorten mit >= 5 Einträgen
+  group_by(primary_milk) |> filter(n() >= 5) |> ungroup() |>
+  mutate(
+    primary_country = droplevels(factor(primary_country)),
+    primary_milk = droplevels(factor(primary_milk))
+  )
+
+# Chi-Quadrat-Test
+chisq_result <- chisq.test(table(cheeses_chi$primary_country, cheeses_chi$primary_milk))
+chisq_result
+```
+
+Der p-Wert des Tests ist extrem klein und liegt weit unter dem Schwellenwert von 0.05. Das bedeutet, dass der Zusammenhang statistisch signifikant ist. Herkunftsland und verwendete Milchsorte sind nicht unabhängig voneinander. Dieses Ergebnis passt zu der Beobachtung in der Visualisierung, dass manche Milchsorten eine deutlich stärkere Ausprägung in bestimmten Ländern / Regionen haben.
+
+## Hypothese 2: Fettgehalt und Milchsorte
+
+Für die zweite Hypothese wird geprüft, ob der durchschnittliche Fettgehalt abhängig von der verwendeten Milchsorten ist. Hierfür wird eine Varianzanalyse (ANOVA) durchgeführt. Auch hier werden Milchsorten mit weniger als 5 Einträgen herausgefiltert.
+
+```{r test-hypothese-2}
+# Varianzanalyse (ANOVA)
+cheeses_anova <- cheeses_stats |>
+  drop_na(fat_numeric, primary_milk) |>
+  # Nur Milchsorten mit >= 5 Einträgen
+  group_by(primary_milk) |> filter(n() >= 5) |> ungroup() |>
+  mutate(primary_milk = droplevels(factor(primary_milk)))
+
+anova_result <- aov(fat_numeric ~ primary_milk, data = cheeses_anova)
+summary(anova_result)
+```
+
+Die ANOVA liefert einen p-Wert von 0.568. Da dieser Wert deutlich über dem Schwellenwert von 0.05 liegt, ist der Zusammenhang nicht statistisch signifikant. Anhand der vorliegenden Daten lässt sich also nicht nachweisen, dass die Milchsorte einen Einfluss auf den Fettgehalt des Käses hat. Auch dieses Ergebnis passt zu der Beobachtung im Violin-Plot, dass die Verteilung des Fettgehalts über alle Milchsorten hinweg ähnlich ist.
+
+# Fazit und Einschränkungen
+
+In dieser Analyse wurden die Zusammenhänge zwischen geografischer Herkunft, Milchsorte und Fettgehalt von Käse untersucht.
+
+Es konnte gezeigt werden, dass es einen statistischen Zusammenhang zwischen dem Herkunftsland und der verwendeten Milchsorte gibt. Regionale Traditionen und das lokale Klima scheinen eine große Rolle dabei zu spielen, welche Tiere für die Käseproduktion gehalten werden.
+
+Ein Zusammenhang des Fettgehalts in Abhängigkeit von der Milchsorte konnte nicht nachgewiesen werden. Die Verteilungen für die verschiedenen Milchsorten weisen starke Ähnlichkeit auf. Das deutet darauf hin, dass der Fettgehalt des Käses eher von den individuellen Käsetypen (Weichkäse, Hartkäse, usw.) und dem eigentlichen Herstellungsprozess abhängt als von der rohen Milchsorte selbst.
+
+## Einschränkungen der Daten
+
+Bei der Interpretation der Ergebnisse muss berücksichtigt werden, dass der Datensatz auf den Einträgen der Website *cheese.com* basiert. Es fehlen bei einigen Käsesorten Werte zum Fettgehalt, zur Milchsorte oder zum Herkunftsland, die im Vorfeld aussortiert werden mussten. Zudem ist es wahrscheinlich, dass europäische und nordamerikanische Käsesorten auf der Plattform überrepräsentiert sind, während kleinere lokale Produktionen aus anderen Teilen der Welt im Datensatz fehlen könnten.
