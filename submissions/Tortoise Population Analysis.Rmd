@@ -1,0 +1,680 @@
+---
+title: "Hermann's Tortoise Analysis"
+author: "Jiacheng, Frank, Mika"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Introduction
+
+The present dataset contains observations of Hermann's tortoises from the Golem Grad region in Lake Prespa. The dataset includes, among other variables, the sex of the animals, their locality, and their body condition index. The body condition index is used as an indicator of the physical condition of an animal.
+
+The data come from a long-term study in which individual tortoises were observed and recaptured multiple times. Therefore, repeated measurements have to be considered in the analysis. For the analysis of the sex ratio, each individual tortoise is counted only once. For the analysis of body condition, the average body condition index is first calculated for each individual tortoise.
+
+# Research question 1: Is body condition related to population size which is calculated by the number of recaptured tortoises?
+
+## 1.1 Introduction to Mark-Recapture Analysis (Jiacheng)
+
+The aim of this analysis is to investigate whether estimated tortoise population size is associated with the average Body Condition Index (BCI). Population size was estimated using the Chapman estimator based on mark–recapture data from consecutive years. A linear regression model was then used to examine the relationship between estimated population size and mean BCI.
+
+
+## 1.2 Data Preparation
+
+The dataset was imported from the TidyTuesday GitHub repository. Only variables required for this analysis were retained, including:
+
+- individual
+- locality
+- sex
+- year
+- body_condition_index
+
+Duplicate records within the same year were removed, and observations with missing values were excluded before analysis.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Read directly from GitHub
+
+clutch_size_cleaned <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-03-03/clutch_size_cleaned.csv')
+tortoise_body_condition_cleaned <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-03-03/tortoise_body_condition_cleaned.csv')
+
+library(dplyr)
+
+library(tidyr) 
+
+library(ggplot2) 
+
+library(tibble)
+
+# Assign the dataset to body
+body <- tortoise_body_condition_cleaned
+
+# Keep only the variables required for analysis
+body <- body %>%
+  select(individual,
+         locality,
+         sex,
+         year,
+         body_condition_index)
+
+# Check for duplicate records
+body %>%
+  count(individual, locality, sex, year) %>%
+  filter(n > 1) 
+
+# Remove duplicate records for the same individual in the same year
+body <- body %>%
+  distinct(individual, 
+           locality,
+           sex,
+           year,
+           .keep_all = TRUE) 
+
+# Remove missing values
+body <- body %>%
+  filter(!is.na(individual),
+         !is.na(year),
+         !is.na(locality),
+         !is.na(sex),
+         !is.na(body_condition_index))
+
+# Sort observations by year
+body <- body %>%
+  arrange(year)
+```
+
+## 1.3 Population Estimation
+
+Population size was estimated using the Chapman estimator, a modified version of the Lincoln–Petersen estimator that reduces bias when the number of recaptured individuals is relatively small.
+
+For two consecutive sampling years,
+
+$$
+\hat N=\frac{(M+1)(C+1)}{R+1}-1
+$$
+
+where
+
+- M = number of individuals captured in the first year
+- C = number captured in the second year
+- R = number recaptured in both years
+
+```{r population_estimation}
+# Estimate annual population size
+# All sampling years
+years <- sort(unique(body$year))
+
+# Store estimation results
+population_estimate <- data.frame()
+
+# Compare consecutive years
+# Estimate population size using mark–recapture data from consecutive years (Chapman estimator)
+for(year1 in years){
+  
+  year2 <- year1 + 1
+  
+  # Skip if the following year is unavailable
+  if(!(year2 %in% years)){
+    next
+  }
+  
+  # Individuals captured in the first year
+  capture1 <- body %>%
+    filter(year == year1) %>%
+    pull(individual) %>%
+    unique()
+  
+  # Individuals captured in the following year
+  capture2 <- body %>%
+    filter(year == year2) %>%
+    pull(individual) %>%
+    unique()
+  
+  # M
+  M <- length(capture1)
+  
+  # C
+  C <- length(capture2)
+  
+  # R
+  R <- length(intersect(capture1, capture2))
+  
+  # Chapman estimator
+  if(R > 0){
+    
+    N <- ((M + 1) * (C + 1)) / (R + 1) - 1
+    
+    population_estimate <- rbind(
+      population_estimate,
+      data.frame(
+        year = year2,
+        estimated_population = N,
+        recaptured = R
+      )
+    )
+    
+  }
+  
+}
+# Display estimated population size
+population_estimate <- population_estimate %>%
+  arrange(year)
+population_estimate
+```
+
+## 1.4 Statistical Analysis
+
+The annual mean Body Condition Index (BCI) was calculated for each year. Estimated population size and mean BCI were merged into a single dataset.
+
+A simple linear regression model was fitted:
+
+$$
+\text{Mean BCI} \sim \text{Estimated Population Size}
+$$
+
+to evaluate whether population size significantly predicts body condition.
+
+```{r regression}
+# Calculate the annual mean Body Condition Index
+bci_year <- body %>%
+  group_by(year) %>%
+  summarise(
+    mean_BCI = mean(body_condition_index,
+                    na.rm = TRUE)
+  )
+
+bci_year
+
+# Merge the two datasets
+analysis <- population_estimate %>%
+left_join(bci_year,
+          by = "year")
+
+analysis
+
+# Fit a linear regression model
+model <- lm(mean_BCI ~ estimated_population,
+            data = analysis)
+
+summary(model)
+```
+
+## 1.5 Results
+
+The estimated population size ranged from approximately 900 to 1500 individuals across sampling years.
+
+Linear regression showed a weak positive trend between estimated population size and mean Body Condition Index (BCI).
+
+However, this relationship was not statistically significant (p = 0.20).
+
+The regression model explained approximately 12% of the variation in mean BCI (R² = 0.12), indicating that estimated population size was not a strong predictor of body condition.
+
+```{r figure}
+# Create the regression plot
+ggplot(analysis,
+       aes(x = estimated_population,
+           y = mean_BCI)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm",
+              se = TRUE) +
+  labs(
+    x = "Estimated Population Size",
+    y = "Mean Body Condition Index",
+    title = "Relationship between Estimated Population Size and Body Condition Index"
+  ) +
+  theme_minimal()
+```
+
+## 1.6 Conclusion
+
+This analysis found no statistically significant relationship between estimated tortoise population size and mean Body Condition Index.
+
+Although the regression line showed a slight positive trend, the association was weak and not statistically significant.
+
+These findings suggest that annual variation in population size alone does not adequately explain changes in tortoise body condition.
+
+Although no significant relationship was detected, this result remains informative because it suggests that variation in body condition is likely influenced by factors other than annual population size, such as environmental conditions, food availability, or individual health.
+
+
+
+
+# Research Question 2: How do the observed sex ratio and the body condition index of Golem Grad tortoises differ between the localities Beach, Konjsko, and Plateau, and to what extent does the relationship between sex and body condition depend on locality?
+
+The aim of this analysis is to examine whether the observed sex ratio and the physical condition of the Golem Grad tortoises differ between the three localities Beach, Konjsko, and Plateau.
+
+This research question is divided into three sub-questions:
+
+1. Does the ratio of female to male tortoises differ between the three localities?
+2. Does the average body condition index differ between female and male tortoises?
+3. Is the difference in body condition between female and male tortoises the same at all localities, or does it depend on locality?
+
+The analysis investigates whether there are statistical associations between sex, body condition, and locality. However, the results do not allow direct causal conclusions about whether locality or sex causes differences in body condition.
+
+## 2.1 Data Preparation
+
+
+The original dataset contains `r nrow(tortoise_body_condition_cleaned)` observations and `r ncol(tortoise_body_condition_cleaned)` variables.
+
+```{r data-preview}
+tortoise_body_condition <- tortoise_body_condition_cleaned
+knitr::kable(
+  head(tortoise_body_condition_cleaned),
+  caption = "The first six rows of the dataset"
+)
+```
+
+Because some individuals were observed more than once, the analysis is first summarized at the level of individual tortoises. For each individual, the first available information about sex and locality is used. Then, the average body condition index is calculated for each individual.
+
+```{r prepare-data}
+first_information <- tortoise_body_condition %>%
+  filter(
+    sex %in% c("f", "m"),
+    locality %in% c("Beach", "Konjsko", "Plateau")
+  ) %>%
+  arrange(individual, year_recode, year) %>%
+  group_by(individual) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(individual, locality, sex)
+
+mean_condition <- tortoise_body_condition %>%
+  group_by(individual) %>%
+  summarise(
+    mean_body_condition = mean(body_condition_index, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    mean_body_condition = if_else(
+      is.nan(mean_body_condition),
+      NA_real_,
+      mean_body_condition
+    )
+  )
+
+analysis_data <- first_information %>%
+  left_join(mean_condition, by = "individual") %>%
+  drop_na(mean_body_condition) %>%
+  mutate(
+    sex_label = recode(sex, f = "female", m = "male"),
+    locality = factor(
+      locality,
+      levels = c("Beach", "Konjsko", "Plateau")
+    )
+  )
+```
+
+The summarized dataset used for the analysis contains `r nrow(analysis_data)` individual tortoises.
+
+## 2.2 Sex Ratio by Locality
+
+First, the number of female and male tortoises observed at each locality is examined. Because each individual is included only once in `analysis_data`, repeated captures are not counted multiple times.
+
+```{r calculate-sex-ratio}
+sex_ratio <- analysis_data %>%
+  count(locality, sex_label, name = "Number") %>%
+  group_by(locality) %>%
+  mutate(
+    Percent = round(100 * Number / sum(Number), 1)
+  ) %>%
+  ungroup()
+
+sex_ratio_table <- analysis_data %>%
+  count(locality, sex, name = "Number") %>%
+  pivot_wider(
+    names_from = sex,
+    values_from = Number,
+    values_fill = 0
+  ) %>%
+  mutate(
+    Total = f + m,
+    `Male percentage` = round(100 * m / Total, 1),
+    `Males per female` = round(m / f, 2)
+  ) %>%
+  rename(
+    Locality = locality,
+    Female = f,
+    Male = m
+  )
+
+knitr::kable(
+  sex_ratio_table,
+  caption = "Sex ratio by locality"
+)
+```
+
+```{r sex-ratio-plot}
+ggplot(
+  sex_ratio,
+  aes(
+    x = locality,
+    y = Percent,
+    fill = sex_label
+  )
+) +
+  geom_col(width = 0.7) +
+  geom_text(
+    aes(label = paste0(Percent, " %")),
+    position = position_stack(vjust = 0.5),
+    size = 4
+  ) +
+  scale_fill_discrete(name = "Sex") +
+  labs(
+    title = "Sex Ratio by Locality",
+    subtitle = "Each tortoise is counted only once",
+    x = "Locality",
+    y = "Percentage"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+The figure shows clear differences between the localities. On the Plateau, the proportion of male tortoises is particularly high. In Konjsko, by contrast, more female than male tortoises were recorded.
+
+## 2.3 Body Condition by Sex and Locality
+
+The next step examines the average body condition index of individual tortoises.
+
+```{r body-condition-table}
+body_condition_table <- analysis_data %>%
+  group_by(locality, sex_label) %>%
+  summarise(
+    `Number of tortoises` = n(),
+    `Mean body condition` = round(mean(mean_body_condition), 2),
+    `Standard deviation` = round(sd(mean_body_condition), 2),
+    `Median body condition` = round(median(mean_body_condition), 2),
+    .groups = "drop"
+  ) %>%
+  rename(
+    Locality = locality,
+    Sex = sex_label
+  )
+
+knitr::kable(
+  body_condition_table,
+  caption = "Body condition by sex and locality"
+)
+```
+
+```{r body-condition-plot}
+ggplot(
+  analysis_data,
+  aes(
+    x = sex_label,
+    y = mean_body_condition,
+    fill = sex_label
+  )
+) +
+  geom_boxplot(
+    outlier.alpha = 0.25,
+    width = 0.65
+  ) +
+  facet_wrap(~ locality) +
+  scale_fill_discrete(name = "Sex") +
+  labs(
+    title = "Body Condition by Sex and Locality",
+    subtitle = "The average body condition index of each individual is shown",
+    x = "Sex",
+    y = "Average body condition index"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+Body condition differs between localities and also partly between sexes. The high average body condition index of female tortoises in Konjsko is particularly noticeable. On the Plateau, however, female and male tortoises differ only slightly in average body condition.
+
+## 2.4 Statistical Analysis
+
+### 2.4.1 Association Between Sex and Locality
+
+Because sex and locality are categorical variables, a chi-square test is used.
+
+```{r chi-square-test}
+sex_location_table <- table(
+  analysis_data$locality,
+  analysis_data$sex
+)
+
+chi_square_test <- chisq.test(sex_location_table)
+
+cramers_v <- sqrt(
+  unname(chi_square_test$statistic) /
+    (
+      sum(sex_location_table) *
+        min(
+          nrow(sex_location_table) - 1,
+          ncol(sex_location_table) - 1
+        )
+    )
+)
+
+chi_result <- tibble(
+  Test = "Chi-square test",
+  `Chi-square` = round(unname(chi_square_test$statistic), 2),
+  `Degrees of freedom` = unname(chi_square_test$parameter),
+  `p-value` = format.pval(chi_square_test$p.value, digits = 3, eps = 0.001),
+  `Cramer's V` = round(cramers_v, 2)
+)
+
+knitr::kable(
+  chi_result,
+  caption = "Association between sex and locality"
+)
+```
+
+The chi-square test examines whether the observed sex ratio is independent of locality. The calculated p-value is `r format.pval(chi_square_test$p.value, digits = 3, eps = 0.001)`. This indicates a statistically significant association between sex and locality. Cramer's V is `r round(cramers_v, 2)` and describes the strength of this association.
+
+### 2.4.2 Body Condition, Sex, and Locality
+
+For the body condition index, a two-way analysis of variance is calculated with sex and locality as factors.
+
+```{r anova}
+body_condition_model <- aov(
+  mean_body_condition ~ locality * sex,
+  data = analysis_data
+)
+
+anova_table <- summary(body_condition_model)[[1]] %>%
+  as.data.frame() %>%
+  rownames_to_column("Effect") %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  )
+
+knitr::kable(
+  anova_table,
+  caption = "Analysis of variance for body condition"
+)
+```
+
+The interaction effect `locality:sex` indicates whether the difference between female and male tortoises changes depending on locality. A statistically significant interaction effect means that the relationship between sex and body condition is not the same at all localities.
+
+## 2.5 Results
+
+The analysis shows a clear association between locality and the observed sex ratio. The Plateau is strongly male-biased, whereas more female than male tortoises were recorded in Konjsko.
+
+The body condition index also differs between localities. Particularly high values are found among female tortoises in Konjsko. However, the difference between female and male tortoises is not equally strong at all localities.
+
+Overall, the results suggest that sex, body condition, and locality are related. However, the observed associations do not prove that locality or sex directly causes differences in body condition.
+
+## 2.6 Discussion and Relation to the Article
+
+The results of the analysis illustrate why a numerically large tortoise population can still be at long-term risk. On the Plateau, the sex ratio is strongly biased toward male individuals. At the same time, female tortoises show clear locality-related differences in body condition.
+
+For the long-term persistence of a population, the total number of animals is not the only relevant factor. It is also essential that enough reproductive females are present and that these females have sufficient physical condition and survival chances.
+
+This connects the analysis to the article *Sex Ratio Bias Triggers Demographic Suicide in a Dense Tortoise Population*. A population may appear large and stable on the surface, while its demographic structure is already unstable in the long term. If the number of females continues to decline and their living and reproductive conditions do not improve, the local population on Golem Grad could eventually collapse.
+
+The dataset alone does not reproduce all analyses and models of the scientific article. However, it makes central patterns visible that help explain the described long-term risk of population collapse.
+
+## 2.7 Personal Conclusion and Critical Reflection
+
+While working with the article, I was particularly irritated by the use of the term "demographic suicide." The expression is certainly striking and immediately attracts attention, but in my view it is unnecessarily dramatic and partly misleading. The word "suicide" usually suggests a conscious, intentional, and direct act against oneself. This is not what is happening in the tortoise population.
+
+The animals do not decide to destroy their own population. Instead, the data point to a long-term demographic process: because the sex ratio is strongly shifted toward male individuals, pressure on the few female tortoises increases. Their body condition, reproductive opportunities, and survival probability can be negatively affected. If this development continues, the female part of the local population on Golem Grad could disappear in the long term, leading to a collapse of the local population.
+
+In my view, the term "population collapse" describes this process more accurately than "demographic suicide." The term "extinction vortex" also makes it clearer that this is a self-reinforcing population-biological process, not an intentional act of self-destruction. By contrast, "demographic suicide" seems like a strongly dramatized, almost clickbait-like title, even though the actual scientific finding is already alarming enough.
+
+The analysis also shows why the threatened collapse is not necessarily visible at first glance. Many tortoises still live on Golem Grad, so the population may appear large and stable on the surface. Only a closer examination of the sex ratio, body condition, and survival chances of females reveals that the internal structure of the population is not stable in the long term.
+
+The key point is therefore not only how many animals are currently present, but whether enough reproductive females survive and reproduce successfully. The article does not describe a sudden "suicide" of a species, but rather a long-term, self-reinforcing collapse of a local tortoise population if current conditions do not change.
+
+## 2.8 Conclusion
+
+The research question can be answered by stating that locality is associated both with the sex ratio and with the body condition of the tortoises investigated. The particularly high proportion of males on the Plateau and the high body condition of female tortoises in Konjsko are especially striking.
+
+The results show that a large number of observed animals alone is not evidence of a stable population in the long term. The demographic composition and the physical condition of reproductive individuals must also be taken into account.
+
+
+
+
+# Research question 3: Is body condition related to clutch size in female Hermann’s tortoises?
+
+
+
+## 3.1 Checking out the data & Introduction
+A first look at the data. There are two data sets that describe the population of the Hermann's tortoise in Lake Prespa in North Macedonia. Both data sets give a number to each captured individual and record their carapace length, their body mass as well as their locality. The locality is split into three regions: Beach, Konjsko and Plateau. While one data set focuses only on female tortoises and their age and the number of eggs in their clutches, the other one records both sexes and gives each tortoise a body condition index as well as a recatch number.
+The two data sets are not taken over the same time frames, the "clutch size" data is taken from 2023 till 2024 while the "body condition" data is taken from 2008 untill 2023. So there is only a small time overlap between the two data sets. One question that comes to mind when looking at this data is: How is the body condition of the tortoises effecting the clutch size and therefor the ability of the species to reproduce and maintain their population. 
+To answer this question a relation between the carapace length, the body mass and the body condition index is derived. Afterwards the body condition index can be calculated for the female tortoises and a correlation to the clutch sizes can either be proven or refuted.
+
+```{r inspect data}
+glimpse(clutch_size_cleaned)
+glimpse(tortoise_body_condition_cleaned)
+```
+## 3.2 Deduplicate the Data
+Get rid of rows that are completely the same with distinct()
+
+```{r deduplicate}
+tbcc <- tortoise_body_condition_cleaned %>% distinct()
+nrow(tortoise_body_condition_cleaned)
+nrow(tbcc)
+```
+
+
+## 3.3 Check for correlation between body mass and the carapace length
+At first the correlation between body mass and the carapace length is checked with a linear model and summary(). The R-squared of 0.8715 there seems to be a good correlation between these two data points. And the low p-value of 2.2e-16 also shows that there is indeed a correlation, which is expected from a biological point of view.
+So one way to calculate a body condition index would be to use the residual, that is why the correlation between the residual of the linear model, involving the body mass and carapce length, with the body condition index is checked. And while there is some correlation with ~0.47, it does not indicate that the residuals where used to calculate the body condition index.
+```{r residual}
+lm_bci <- lm(
+  body_mass_grams ~ straight_carapace_length_mm,
+  data = tbcc
+)
+
+summary(lm_bci)
+```
+```{r correlation}
+cor(
+  resid(lm_bci),
+  tbcc$body_condition_index
+)
+```
+## 3.4 Linear Model
+The next hypothesis that is checked: a linear model to calculate the body condition index. 
+With a R-squared of 0.9884 this looks very promising. So the linear model is plotted together with the data in "Linear Model vs. Body Condition Data". This plot shows that the linear model is a really good assumption, the only points where it does not work as well are the two extremes, for the smallest and the biggest tortoises the linear model is predicting the body condition index correctly. 
+To show that even clearer the residual, of the predicted body condition index and the actual body condition index from the data, is plotted against the predicted body condition index. The failures of the linear model for high and low body condition indexes are clearly visable here.
+So the linear model is also not what was beeing used to calculate the body condition index. If the body condition index was just estimated and subjectively given, then the linear model would be a good enough to make a statement on the relationship between the body condition index and the clutch size.
+
+```{r model}
+bci_model <- lm(
+  body_condition_index ~ body_mass_grams + straight_carapace_length_mm,
+  data = tbcc
+)
+
+summary(bci_model)
+```
+```{r graphics_model1}
+bci_model_data <- tbcc %>%
+  mutate(
+    predicted_bci = predict(bci_model),
+    residual = body_condition_index - predicted_bci
+  )
+
+ggplot(bci_model_data, aes(x = predicted_bci, y = body_condition_index)) +
+  geom_point(alpha = 0.15) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linewidth = 1) +
+  labs(
+    x = "Predicted body condition index",
+    y = "Observed body condition index",
+    title = "Linear model vs. Body Condition Data"
+  ) +
+  theme_minimal()
+```
+
+```{r graphics_model2}
+ggplot(bci_model_data, aes(x = predicted_bci, y = residual)) +
+  geom_point(alpha = 0.15) +
+  geom_hline(yintercept = 0, color = "red", linewidth = 1) +
+  geom_smooth(se = FALSE) +
+  labs(
+    x = "Predicted body condition index",
+    y = "Residual: observed - predicted BCI"
+  ) +
+  theme_minimal()
+```
+## 3.4 Check a third theory
+After looking at some of the single data points there is a new hypothesis: The body condition index is calculated by dividing the body mass with the carapace length.
+This theory is easily checked, by calculating the body condition index with this formula and afterwards comparing it to the body condition index from the data.
+The resulting differences are so small that they can be entirely attributed to possible rounding errors. So this seems to be the formula that was use to calculate the body condition index.
+```{r check theory}
+tbcc %>% mutate(
+  calculated_bci = body_mass_grams / straight_carapace_length_mm,
+  difference = body_condition_index - calculated_bci
+) %>%
+  summarise(
+    largest_difference = max(abs(difference)),
+    mean_difference = mean(abs(difference))
+  )
+```
+## 3.5 Put BCI in clutch_size_cleaned
+Now the body condition index is calculated for the female tortoises in the clutch size data set.
+
+```{r data input}
+clutch_size_cleaned <- clutch_size_cleaned %>% 
+  mutate(
+    body_condition_index = body_mass_grams / straight_carapace_length_mm
+  )
+```
+## 3.6 Check correlation between number of eggs and BCI
+A correlation test with the Pearson model is performed. The p-value for the test against the null hypothesis was p < 2.2e-16 and the Pearson correlation coefficient was r = 0.876, indicating a strong positive relationship.
+This can also be seen in the plot "Linear correlation between Clutch size and Body Condition Index" where the number of eggs in one clutch is plotted against the body condition index while a linear model is overlayed to confirm the correlation and relation between the clutch size and the body condition of the females.
+```{r}
+cor.test(
+  clutch_size_cleaned$eggs,
+  clutch_size_cleaned$body_condition_index,
+  method = "pearson"
+)
+```
+```{r}
+ggplot(
+  clutch_size_cleaned,
+  aes(x = body_condition_index, y = eggs)
+) +
+  geom_jitter(width = 0, height = 0.15, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(
+    x = "Body condition index (g/mm)",
+    y = "Number of eggs",
+    title = "Linear correlation between Clutch size and Body Condition Index"
+  ) +
+  theme_minimal()
+```
+## 3.7 Conclusion
+There is a clear correlation between the body condition of the female tortoises and the number of eggs in each clutch. Squaring the Pearson correlation coefficient gives r² = 0.767. This means that approximately 77% of the variation in clutch size is linearly associated with variation in body condition index. This is quite high in a biological setting where a lot of other factors are also contributing to each data point. 
+From a biological point of view, it is also no surprise that there is a correlation. It is expected for almost all species to suffer from a lower reproduction rate if the population, espacially the female population, is in a bad condition.
+A limitation of this analysis is that the body condition index is calculated directly from body mass and carapace length. Therefore, the observed relationship may partly reflect the effect of body size or mass on clutch size, rather than body condition alone.
+
+# Final Conclusion
+
+In this report, we looked at different aspects of the Hermann’s tortoise population on Golem Grad. The main focus was on population size, sex ratio, locality, body condition, and clutch size. The results show that it is not enough to only look at the total number of tortoises. A population can still have problems even if many individuals are present, especially when the sex ratio is unbalanced or when the condition of the females is affected.
+
+The first analysis did not show a statistically significant relationship between estimated population size and the average body condition index. There was a slight positive trend, but it was too weak to draw a clear conclusion. This means that population size alone does not really explain the changes in body condition. Other factors, such as food availability, environmental conditions, or individual health, probably also play an important role.
+
+The second analysis showed clear differences between the three localities. The Plateau had a very high proportion of male tortoises, while Konjsko had more females than males. The body condition index also differed between localities and between sexes. Especially noticeable was the high body condition of female tortoises in Konjsko. The significant interaction effect also shows that the difference between males and females was not the same in every locality.
+
+The third analysis showed a strong positive correlation between body condition index and clutch size in female tortoises. Females with a higher body condition index tended to have more eggs. This makes sense biologically, because females in better physical condition are usually expected to have a higher reproductive output. However, this result should be interpreted carefully, because the body condition index is calculated from body mass and carapace length. Therefore, the correlation may partly reflect body size or body mass rather than body condition alone.
+
+Overall, our results support the idea that the Golem Grad tortoise population could face long-term problems, even though the population still appears large. The most important point is not only how many tortoises are present, but also whether enough females survive and reproduce successfully. The results therefore fit well with the main idea of the article, namely that a dense population can still become unstable if its demographic structure is strongly unbalanced. However, our analyses only show statistical relationships. They do not prove direct causes, so further research would be needed to understand the reasons behind these patterns more clearly.
+
+# References
+
+Arsovski, D., Bonnet, X., Golubović, A. & Tomović, L. (2026). *Sex Ratio Bias Triggers Demographic Suicide in a Dense Tortoise Population*. Ecology Letters, 29(1), e70296. DOI: 10.1111/ele.70296.
+
+TidyTuesday (2026). *Golem Grad Tortoise Data*. Dataset from 3 March 2026.
