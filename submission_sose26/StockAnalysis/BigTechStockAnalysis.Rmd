@@ -1,0 +1,621 @@
+---
+title: "Big Tech Stocks – Do They Behave Like the Textbooks Say?"
+author: "Tom Schubert (ubpjy) & Armin Vosoghi Marand (uzmrh)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.width = 9,
+                      fig.height = 5.5)
+
+options(scipen = 15)
+
+library(tidyverse)
+library(janitor)
+library(visdat)
+```
+
+# Introduction
+
+Classical finance theory makes a very convenient assumption. It assumes that daily stock returns follow a normal distribution, the famous bell curve. If this is true, then the whole behavior of a stock can be described with just two numbers, the mean and the standard deviation. Risk becomes a single number, and famous tools like Value at Risk, the Black Scholes option pricing formula, and the Markowitz portfolio theory all work as intended.
+
+**Our research question. Do daily returns of big tech stocks really behave the way classical finance assumes?**
+
+We test this with 14 big tech stocks and about 13 years of daily price data along four sub questions.
+
+1. **Q1 Shape of returns.** Bell curve or fat tails?
+2. **Q2 Risk over time.** Constant or stormy phases?
+3. **Q3 Moving together.** Stable correlations, or stronger in crises?
+4. **Q4 Stock vs. stock.** All equal, or some much wilder?
+
+We follow the workflow from the course. We import the data, wrangle it into a tidy format, explore it with plots and summary tables, run a few simple statistical tests and report everything in this document.
+
+# Data and Wrangling
+
+## Big Tech stock prices
+
+Our main dataset is the *Big Tech Stock Prices* dataset from TidyTuesday (published in February 2023, originally collected from Yahoo Finance via Kaggle). It contains daily prices for 14 big tech companies. Each company comes as its own CSV file, so we read all 14 files at once and add the ticker symbol from the file name.
+
+```{r import-stocks}
+stock_files <- list.files("archive", pattern = "\\.csv$", full.names = TRUE)
+
+prices <- read_csv(stock_files, id = "file") %>%
+  clean_names() %>%
+  mutate(symbol = str_remove(basename(file), "\\.csv$")) %>%
+  select(symbol, date, open, high, low, close, adj_close, volume)
+
+prices
+```
+
+The combined dataset has `r nrow(prices)` rows and covers `r n_distinct(prices$symbol)` stocks. For each trading day we have the opening, highest, lowest and closing price plus the traded volume. We will work with the adjusted closing price (`adj_close`) because it corrects for stock splits and dividends and is therefore the right price for return calculations.
+
+```{r overview-table}
+prices %>%
+  group_by(symbol) %>%
+  summarise(first_day = min(date),
+            last_day = max(date),
+            trading_days = n())
+```
+
+Most stocks are covered from January 2010 until the end of 2022. Meta and Tesla start later because they went public later. We have to keep this in mind for the portfolio comparison in the last section.
+
+## Missing data check
+
+```{r missing-data, fig.height=4}
+vis_miss(prices, warn_large_data = FALSE)
+```
+
+The dataset is complete. There are no missing values in any column, so we do not need to drop or impute anything.
+
+## Additional dataset 1, the VIX
+
+To judge the risk of our stocks we add a second data source, the VIX. The VIX is often called the fear index of the stock market. It is calculated by CBOE, the largest US options exchange, from the prices of options on the S&P 500 index. When investors are nervous they pay more for options that protect them against falling prices, and the VIX turns these option prices into a single number. It measures how much movement the market *expects* for the next 30 days, quoted as a yearly volatility in percent. Values around 15 stand for calm markets while values above 30 signal fear. We downloaded the official daily VIX history from CBOE (the same series is published on FRED under the id VIXCLS).
+
+```{r import-vix}
+vix <- read_csv("data/VIX_History.csv") %>%
+  clean_names() %>%
+  mutate(date = mdy(date)) %>%
+  select(date, vix = close) %>%
+  filter(date >= min(prices$date),
+         date <= max(prices$date))
+
+vix
+```
+
+## Additional dataset 2, major market crash dates
+
+To give the time axis some context we use the major stock market crash periods inside our time window, taken from the Wikipedia list of stock market crashes and bear markets. We store them as a small table and will shade these periods in our plots.
+
+```{r crash-dates}
+crashes <- tribble(
+  ~event,                ~start,       ~end,
+  "August 2011 fall",    "2011-08-01", "2011-10-04",
+  "2015/16 selloff",     "2015-08-18", "2016-02-11",
+  "Late 2018 selloff",   "2018-09-20", "2018-12-24",
+  "COVID 19 crash",      "2020-02-20", "2020-04-07",
+  "2022 bear market",    "2022-01-03", "2022-10-12"
+) %>%
+  mutate(start = as.Date(start),
+         end = as.Date(end))
+
+crashes
+```
+
+## Additional dataset 3, the federal funds rate
+
+Our third external data source is the federal funds rate. This is the interest rate at which US banks lend each other money overnight. The US central bank steers this rate and uses it as its main tool to cool down or stimulate the economy, so it is often called the price of money. Higher rates make borrowing expensive and make safe investments like bonds more attractive, which can pull money out of risky assets like tech stocks. We use the monthly series from FRED, the public database of the Federal Reserve Bank of St. Louis.
+
+```{r import-fed}
+fed <- read_csv("data/FEDFUNDS.csv") %>%
+  clean_names() %>%
+  rename(month = observation_date, fed_rate = fedfunds) %>%
+  filter(month >= min(prices$date),
+         month <= max(prices$date)) %>%
+  mutate(rate_change = fed_rate - lag(fed_rate))
+
+fed
+```
+
+## From prices to daily returns
+
+Raw prices are not comparable across stocks (one Apple share costs something completely different than one Amazon share). Finance therefore works with **daily returns**. We use log returns, which are standard in classical finance,
+
+$$r_t = \ln\left(\frac{P_t}{P_{t-1}}\right) \cdot 100$$
+
+where $P_t$ is the adjusted closing price on day $t$. For small daily moves a log return is almost identical to the simple percentage change. We compute the return per stock and drop the very first day of each stock, which has no previous price.
+
+```{r compute-returns}
+returns <- prices %>%
+  group_by(symbol) %>%
+  arrange(date, .by_group = TRUE) %>%
+  mutate(ret = log(adj_close / lag(adj_close)) * 100) %>%
+  ungroup() %>%
+  drop_na(ret) %>%
+  select(symbol, date, adj_close, ret)
+
+returns %>%
+  group_by(symbol) %>%
+  summarise(mean_return = round(mean(ret), 3),
+            sd_return = round(sd(ret), 2),
+            worst_day = round(min(ret), 1),
+            best_day = round(max(ret), 1))
+```
+
+The summary table already gives a first hint. The average daily return of every stock is tiny, but single days with moves of plus or minus 20 percent or more exist. Under a bell curve with a standard deviation of about 2 percent such days should be close to impossible. We look at this properly in the next section.
+
+# Q1 Return Distribution, Bell Curve or Fat Tails?
+
+## A first look at one stock
+
+We start with Apple and compare the actual distribution of its daily returns with a perfect normal distribution that has the same mean and standard deviation.
+
+```{r q1-histogram}
+aapl <- returns %>% filter(symbol == "AAPL")
+
+aapl_mean <- mean(aapl$ret)
+aapl_sd <- sd(aapl$ret)
+
+ggplot(aapl, aes(x = ret)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 100, fill = "steelblue", alpha = 0.8) +
+  stat_function(fun = dnorm,
+                args = list(mean = aapl_mean, sd = aapl_sd),
+                color = "red", linewidth = 1) +
+  labs(title = "Daily returns of Apple vs. the textbook bell curve",
+       x = "Daily log return (%)",
+       y = "Density") +
+  theme_minimal()
+```
+
+The blue bars show how often each daily return actually happened for Apple. The red line is the perfect bell curve with the same mean and standard deviation. At first sight the fit looks acceptable. But the real data has a peak that is too tall and shoulders that are too thin. The most important difference is almost invisible in this picture. It hides far out in the left and right ends of the distribution.
+
+## QQ plots for all 14 stocks
+
+A QQ plot makes the ends of a distribution visible. If the data were normally distributed, all points would lie on the red line.
+
+```{r q1-qqplots, fig.height=8}
+ggplot(returns, aes(sample = ret)) +
+  stat_qq(size = 0.4, alpha = 0.3, color = "steelblue") +
+  stat_qq_line(color = "red") +
+  facet_wrap(~ symbol, ncol = 4, scales = "free") +
+  labs(title = "QQ plots of daily returns against the normal distribution",
+       x = "Theoretical quantiles",
+       y = "Observed quantiles") +
+  theme_minimal()
+```
+
+The picture is very clear. For every single stock the points bend away from the red line on both ends. Extreme days happen far more often than the bell curve predicts. This pattern is called fat tails. It shows up in all 14 stocks, so it is not a special feature of one single company. It is a property of stock returns in general.
+
+## Counting the extreme days
+
+We can make this concrete by counting. Under a normal distribution a day that is more than 3 standard deviations away from the mean should occur on only about 0.27 percent of all days. A day beyond 5 standard deviations should basically never occur.
+
+```{r q1-extreme-days}
+years_for_one_5sd_day <- 1 / (2 * pnorm(-5) * 252)
+
+extreme_days <- returns %>%
+  group_by(symbol) %>%
+  mutate(z = (ret - mean(ret)) / sd(ret)) %>%
+  summarise(trading_days = n(),
+            over_3sd_observed = sum(abs(z) > 3),
+            over_3sd_expected = round(n() * 2 * pnorm(-3), 1),
+            over_5sd_observed = sum(abs(z) > 5),
+            over_5sd_expected = round(n() * 2 * pnorm(-5), 4))
+
+extreme_days
+```
+
+The numbers speak a clear language. The bell curve expects roughly 9 days beyond 3 standard deviations in our 13 years. Every stock shows clearly more, often 3 to 5 times as many. Days beyond 5 standard deviations are even more striking. The bell curve expects such a day about once every `r round(years_for_one_5sd_day)` years of trading. Almost every stock in our sample still had several of them within just 13 years.
+
+## A formal test
+
+The Shapiro Wilk test checks normality in a formal way. The null hypothesis is that the data comes from a normal distribution.
+
+```{r q1-shapiro}
+shapiro_results <- returns %>%
+  group_by(symbol) %>%
+  summarise(W = round(shapiro.test(ret)$statistic, 3),
+            p_value = format.pval(shapiro.test(ret)$p.value,
+                                  eps = 0.001, digits = 3))
+
+shapiro_results
+```
+
+The p value is far below 0.05 for every stock. So the test rejects the bell curve for all 14 stocks. **The answer to Q1 is fat tails.** Daily returns of big tech stocks are not normally distributed and extreme days are much more common than the textbook model predicts.
+
+# Q2 Performance and Risk over Time
+
+## Is risk constant?
+
+If returns followed one fixed normal distribution, risk would be a constant number over time. We check this by computing the volatility (standard deviation of daily returns) for every stock and every month. We scale it with the square root of 252 trading days so it reads as a yearly percentage, the same unit the VIX uses.
+
+```{r q2-monthly-vol}
+monthly_vol <- returns %>%
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(symbol, month) %>%
+  summarise(vol = sd(ret) * sqrt(252), .groups = "drop")
+
+avg_vol <- monthly_vol %>%
+  group_by(month) %>%
+  summarise(realized = mean(vol))
+
+ggplot() +
+  geom_rect(data = crashes,
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            fill = "red", alpha = 0.15) +
+  geom_line(data = monthly_vol,
+            aes(x = month, y = vol, group = symbol),
+            color = "grey80", linewidth = 0.3) +
+  geom_line(data = avg_vol,
+            aes(x = month, y = realized),
+            color = "steelblue", linewidth = 1) +
+  coord_cartesian(ylim = c(0, 150)) +
+  labs(title = "Monthly volatility of the 14 stocks (crash periods shaded in red)",
+       subtitle = "Grey lines = single stocks, blue line = average across stocks",
+       x = "Year",
+       y = "Volatility (% per year)") +
+  theme_minimal()
+```
+
+Risk is clearly not constant. There are long calm phases where the average volatility stays around 20 to 30 percent and short wild phases where it explodes to 80 percent and more. The wild phases match the shaded crash periods very well. Risk also clusters. A stormy month tends to be followed by another stormy month, and calm months come in long streaks as well. This is a second crack in the textbook picture.
+
+## Comparing with the VIX
+
+Here our additional dataset comes in. The VIX tells us how much risk the market *expected*, while our monthly volatility tells us how much risk actually *happened*. Do the two move together?
+
+```{r q2-vix-comparison}
+monthly_vix <- vix %>%
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(month) %>%
+  summarise(vix = mean(vix))
+
+vol_vix <- avg_vol %>%
+  inner_join(monthly_vix, by = "month")
+
+vol_vix %>%
+  pivot_longer(c(realized, vix),
+               names_to = "series", values_to = "value") %>%
+  mutate(series = recode(series,
+                         realized = "Realized risk of the 14 tech stocks",
+                         vix = "VIX (expected market risk)")) %>%
+  ggplot(aes(x = month, y = value, color = series)) +
+  geom_line(linewidth = 0.8) +
+  scale_color_manual(values = c("steelblue", "darkorange")) +
+  labs(title = "Realized tech stock risk vs. the VIX fear index",
+       x = "Year",
+       y = "Volatility (% per year)",
+       color = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+The two lines move together remarkably well. Every spike in the VIX comes with a spike in the actual risk of our stocks. Our blue line sits higher than the VIX because we look at single tech stocks while the VIX describes a broad and well diversified index, and single stocks always carry extra risk of their own.
+
+## A formal test
+
+To check this relationship formally we use the function `cor.test`, which runs a Pearson correlation test. The Pearson correlation measures how strongly two variables follow a straight line relationship. The value lies between minus 1 and plus 1, where plus 1 means a perfect positive relationship and 0 means no relationship at all. The test also reports a p value, which tells us how likely it would be to see such a relationship by pure chance if the two variables were actually unrelated. In the output below the lines starting with `##` are simply the printed results of this test.
+
+```{r q2-correlation-test}
+ggplot(vol_vix, aes(x = vix, y = realized)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", fill = "lightpink") +
+  labs(title = "Monthly VIX vs. realized volatility of the tech stocks",
+       x = "Average VIX in the month (% per year)",
+       y = "Realized volatility (% per year)") +
+  theme_minimal()
+
+cor.test(vol_vix$vix, vol_vix$realized)
+```
+
+The correlation between the VIX and the realized risk of our stocks is about `r round(cor(vol_vix$vix, vol_vix$realized), 2)` and the test shows that this relationship is highly significant. **The answer to Q2 is that risk comes in storms.** Risk is far from constant, it clusters in crisis phases, and the market fear index is a very good thermometer for what then actually happens in big tech stocks.
+
+# Q3 Correlation Analysis, Moving Together
+
+## How strongly do the stocks move together?
+
+For diversification it matters a lot whether stocks move independently or in lockstep. We compute the correlation of daily returns for every pair of stocks.
+
+```{r q3-correlation-matrix, fig.height=7}
+ret_wide <- returns %>%
+  select(date, symbol, ret) %>%
+  pivot_wider(names_from = symbol, values_from = ret)
+
+cor_matrix <- ret_wide %>%
+  select(-date) %>%
+  cor(use = "pairwise.complete.obs")
+
+cor_long <- as_tibble(cor_matrix, rownames = "stock_a") %>%
+  pivot_longer(-stock_a, names_to = "stock_b", values_to = "correlation")
+
+ggplot(cor_long, aes(x = stock_a, y = stock_b, fill = correlation)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", correlation)), size = 2.4) +
+  scale_fill_gradient(low = "white", high = "darkred", limits = c(0, 1)) +
+  labs(title = "Correlation of daily returns between the 14 stocks",
+       x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r q3-mean-correlation, include=FALSE}
+mean_correlation <- mean(cor_matrix[lower.tri(cor_matrix)])
+```
+
+Every single correlation is positive. Big tech stocks never really move against each other. The average pairwise correlation is about `r round(mean_correlation, 2)`. The strongest links appear between companies with similar business models, for example Adobe and Microsoft or Google and Microsoft. IBM and Tesla show the weakest links to the rest. Both have business models that differ a lot from the classic software platforms, one as a very old service company and one as a car maker among software firms.
+
+## Do correlations rise in a crisis?
+
+The textbook model treats correlations as stable. Investors however often complain that exactly in a crash everything falls together. We test this with the VIX. We split all months into calm months (VIX below its median) and turbulent months (VIX above its median) and compute the correlation matrix separately for both groups.
+
+```{r q3-regimes, fig.height=5}
+calm_months <- monthly_vix %>%
+  filter(vix <= median(vix)) %>%
+  pull(month)
+
+returns_monthly <- ret_wide %>%
+  mutate(month = floor_date(date, "month"))
+
+cor_calm <- returns_monthly %>%
+  filter(month %in% calm_months) %>%
+  select(-date, -month) %>%
+  cor(use = "pairwise.complete.obs")
+
+cor_turbulent <- returns_monthly %>%
+  filter(!month %in% calm_months) %>%
+  select(-date, -month) %>%
+  cor(use = "pairwise.complete.obs")
+
+cor_to_long <- function(m, regime_name) {
+  as_tibble(m, rownames = "stock_a") %>%
+    pivot_longer(-stock_a, names_to = "stock_b", values_to = "correlation") %>%
+    mutate(regime = regime_name)
+}
+
+bind_rows(cor_to_long(cor_calm, "Calm months (low VIX)"),
+          cor_to_long(cor_turbulent, "Turbulent months (high VIX)")) %>%
+  ggplot(aes(x = stock_a, y = stock_b, fill = correlation)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "darkred", limits = c(0, 1)) +
+  facet_wrap(~ regime) +
+  labs(title = "Correlations in calm vs. turbulent months",
+       x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 6),
+        axis.text.y = element_text(size = 6))
+```
+
+```{r q3-paired-ttest}
+pair_correlations <- tibble(
+  calm = cor_calm[lower.tri(cor_calm)],
+  turbulent = cor_turbulent[lower.tri(cor_turbulent)]
+)
+
+t.test(pair_correlations$turbulent, pair_correlations$calm, paired = TRUE)
+```
+
+The right heatmap is visibly darker than the left one. In calm months the average pairwise correlation is about `r round(mean(pair_correlations$calm), 2)`. In turbulent months it jumps to about `r round(mean(pair_correlations$turbulent), 2)`. The paired t test over all `r nrow(pair_correlations)` stock pairs confirms that this difference is highly significant. **The answer to Q3 is that correlations are not stable.** They rise sharply exactly when markets get stormy. This is bad news for investors because diversification works worst exactly when it is needed most.
+
+## Do tech stocks move with interest rates?
+
+The stocks do not only move with each other. They can also move with outside forces, and the most discussed outside force is the interest rate. Here our third dataset comes in. We first look at how the federal funds rate developed over our time window.
+
+```{r q3-fed-rate, fig.height=4}
+ggplot() +
+  geom_rect(data = crashes,
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            fill = "red", alpha = 0.12) +
+  geom_line(data = fed,
+            aes(x = month, y = fed_rate),
+            color = "steelblue", linewidth = 0.9) +
+  labs(title = "Federal funds rate over time (crash periods shaded in red)",
+       x = "Year",
+       y = "Federal funds rate (%)") +
+  theme_minimal()
+```
+
+The picture shows three very different phases. After the financial crisis the rate stayed near zero for years. From 2016 to 2019 the central bank raised it slowly and carefully. In 2022 the rate then jumped from almost zero to over 4 percent within a single year, which was the fastest increase in decades. And exactly this jump overlaps with the 2022 bear market.
+
+Next we test the relationship formally. We compute the average monthly return of our tech stocks and compare it with the monthly change in the federal funds rate.
+
+```{r q3-fed-monthly}
+monthly_ret <- returns %>%
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(symbol, month) %>%
+  summarise(stock_month_ret = sum(ret), .groups = "drop") %>%
+  group_by(month) %>%
+  summarise(tech_return = mean(stock_month_ret))
+
+fed_tech <- monthly_ret %>%
+  inner_join(fed, by = "month") %>%
+  drop_na(rate_change)
+
+ggplot(fed_tech, aes(x = rate_change, y = tech_return)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", fill = "lightpink") +
+  labs(title = "Monthly rate change vs. average tech stock return",
+       x = "Change in the federal funds rate (percentage points)",
+       y = "Average tech stock return in the month (%)") +
+  theme_minimal()
+
+cor.test(fed_tech$rate_change, fed_tech$tech_return)
+```
+
+Month to month the link is weak. The correlation is only about minus 0.07 and the p value is far above 0.05, so the test finds no significant relationship. A single month of stock returns is simply very noisy and reacts to many things at once. But interest rate policy works slowly, so we repeat the comparison on the yearly level.
+
+```{r q3-fed-yearly}
+yearly_fed <- fed_tech %>%
+  mutate(year = year(month)) %>%
+  filter(year <= 2022) %>%
+  group_by(year) %>%
+  summarise(tech_return = sum(tech_return),
+            rate_change = sum(rate_change))
+
+ggplot(yearly_fed, aes(x = rate_change, y = tech_return)) +
+  geom_smooth(method = "lm", color = "red", fill = "lightpink") +
+  geom_point(color = "steelblue", size = 3) +
+  geom_text(aes(label = year), vjust = -1, size = 3) +
+  labs(title = "Yearly rate change vs. yearly tech stock return",
+       x = "Change in the federal funds rate over the year (percentage points)",
+       y = "Average tech stock return in the year (%)") +
+  theme_minimal()
+
+cor.test(yearly_fed$rate_change, yearly_fed$tech_return)
+```
+
+On the yearly level the picture changes completely. The correlation is strongly negative at about minus 0.84 and clearly significant. Years in which the central bank cut rates or kept them low were mostly good years for tech stocks. The one year with a truly massive rate increase was 2022, and it was by far the worst year in our whole sample. We have to stay careful here. We only have 13 yearly observations and the result depends heavily on this single extreme year. Still the pattern fits the common wisdom that expensive money hurts growth stocks the most.
+
+# Q4 Portfolio Analysis, All Equal or Some Much Wilder?
+
+For a fair comparison between stocks we now restrict the data to the period where all 14 stocks are traded, which starts with the Meta IPO in May 2012. We also build a simple equally weighted portfolio that splits the money evenly across all 14 stocks.
+
+```{r q4-common-window}
+common_days <- returns %>%
+  count(date) %>%
+  filter(n == n_distinct(returns$symbol))
+
+returns_common <- returns %>%
+  semi_join(common_days, by = "date")
+
+portfolio_returns <- returns_common %>%
+  group_by(date) %>%
+  summarise(ret = mean(ret))
+```
+
+## Risk and return per stock
+
+```{r q4-risk-return}
+perf_stocks <- returns_common %>%
+  group_by(symbol) %>%
+  summarise(annual_return = mean(ret) * 252,
+            annual_risk = sd(ret) * sqrt(252)) %>%
+  mutate(type = "Single stock")
+
+perf_portfolio <- portfolio_returns %>%
+  summarise(symbol = "PORTFOLIO",
+            annual_return = mean(ret) * 252,
+            annual_risk = sd(ret) * sqrt(252)) %>%
+  mutate(type = "Equally weighted portfolio")
+
+perf_all <- bind_rows(perf_stocks, perf_portfolio)
+
+ggplot(perf_all, aes(x = annual_risk, y = annual_return, color = type)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = symbol), vjust = -1, size = 3, show.legend = FALSE) +
+  scale_color_manual(values = c("darkorange", "steelblue")) +
+  labs(title = "Risk vs. return, May 2012 to December 2022",
+       x = "Risk (volatility, % per year)",
+       y = "Average return (% per year)",
+       color = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+perf_all %>%
+  arrange(desc(annual_risk)) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 1)))
+```
+
+The stocks are clearly not all equal. Tesla is by far the wildest stock with a yearly risk of about `r round(perf_stocks$annual_risk[perf_stocks$symbol == "TSLA"])` percent. It also earned the highest average return, closely followed by Nvidia and Netflix, so in this group the extra risk was rewarded. The old guard like IBM, Cisco and Oracle is much calmer but also earned far less. The orange portfolio point shows the magic of diversification. Its risk is lower than the risk of every single stock while its return is simply the average of all stocks.
+
+## The same picture as boxplots
+
+```{r q4-boxplots}
+ggplot(returns_common,
+       aes(x = fct_reorder(symbol, ret, .fun = sd), y = ret)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.6, outlier.alpha = 0.15) +
+  coord_cartesian(ylim = c(-12, 12)) +
+  labs(title = "Distribution of daily returns per stock (sorted by volatility)",
+       subtitle = "y axis cut at plus and minus 12 percent for readability",
+       x = NULL,
+       y = "Daily log return (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The boxes confirm the picture. Tesla and Nvidia show the widest range of daily moves while names like Cisco, IBM and Microsoft are much calmer. Note also the huge clouds of outlier points outside the whiskers of every stock. These are exactly the fat tail days from Q1, and they exist for calm and wild stocks alike.
+
+## What one dollar would have become
+
+```{r q4-growth, fig.height=6}
+growth_stocks <- returns_common %>%
+  group_by(symbol) %>%
+  arrange(date, .by_group = TRUE) %>%
+  mutate(value = exp(cumsum(ret / 100))) %>%
+  ungroup()
+
+growth_portfolio <- portfolio_returns %>%
+  arrange(date) %>%
+  mutate(value = exp(cumsum(ret / 100)))
+
+labels_end <- growth_stocks %>%
+  group_by(symbol) %>%
+  slice_max(date, n = 1) %>%
+  ungroup()
+
+crashes_window <- crashes %>%
+  filter(end >= min(growth_stocks$date))
+
+ggplot() +
+  geom_rect(data = crashes_window,
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            fill = "red", alpha = 0.12) +
+  geom_line(data = growth_stocks,
+            aes(x = date, y = value, group = symbol),
+            color = "grey70", linewidth = 0.4) +
+  geom_line(data = growth_portfolio,
+            aes(x = date, y = value),
+            color = "steelblue", linewidth = 1) +
+  geom_text(data = labels_end,
+            aes(x = date, y = value, label = symbol),
+            hjust = -0.15, size = 2.6) +
+  scale_y_log10() +
+  coord_cartesian(clip = "off") +
+  labs(title = "Growth of 1 dollar invested in May 2012 (log scale)",
+       subtitle = "Grey lines = single stocks, blue line = equally weighted portfolio, red zones = crashes",
+       x = "Year",
+       y = "Value of 1 dollar (USD, log scale)") +
+  theme_minimal() +
+  theme(plot.margin = margin(5.5, 45, 5.5, 5.5))
+```
+
+```{r q4-growth-numbers, include=FALSE}
+best_stock <- labels_end %>% slice_max(value, n = 1)
+worst_stock <- labels_end %>% slice_min(value, n = 1)
+portfolio_end <- last(growth_portfolio$value)
+```
+
+One dollar invested in `r best_stock$symbol` in May 2012 grew to about `r round(best_stock$value)` dollars by the end of 2022. The same dollar in `r worst_stock$symbol` ended at only about `r round(worst_stock$value, 1)` dollars. The spread between the best and the worst stock is enormous. The red crash zones hit all lines at the same time, which is Q3 visible with the naked eye. The blue portfolio line ends at about `r round(portfolio_end)` dollars and takes a much smoother path than most single stocks. **The answer to Q4 is that the stocks are far from equal.** Some are several times wilder than others, and spreading the money over all of them removes a large part of the risk without giving up the average return.
+
+# Conclusion
+
+Our research question was whether daily returns of big tech stocks behave the way classical finance assumes. The short answer is no, at least not fully.
+
+The bell curve assumption fails clearly. All 14 stocks show fat tails, extreme days appear many times more often than the normal distribution allows, and the Shapiro Wilk test rejects normality for every single stock. Risk is also not a fixed number. It moves in long calm phases and short violent storms, and these storms line up almost perfectly with the market fear index and the known crash periods. Correlations between the stocks are always positive and they rise strongly in turbulent times, so the stocks huddle together exactly when an investor would hope they go separate ways. The stocks also react to the price of money. This link is invisible in the monthly noise but very clear on the yearly level, where the historic rate increases of 2022 came together with the worst tech year in our sample. Finally the stocks differ enormously from each other. A dollar in the best stock grew to a multiple of what a dollar in the weakest stock achieved, and the wildest stock carries several times the risk of the calmest one.
+
+At the same time not everything from the textbook breaks down. Diversification still works. Our simple equally weighted portfolio had less risk than every single stock while earning the average return. So the lesson is not that the theory is useless. The lesson is that the simple bell curve world underestimates extreme events, and anyone using these models should stay aware of that gap.
+
+# Limitations and Outlook
+
+Our analysis is simple on purpose and has some natural limits. We only looked at 14 large US tech companies over one specific period, so the results may differ for other industries, countries or decades. Our portfolio is a very simple construction that ignores trading costs and taxes. The split into calm and turbulent months by the VIX median is a rough rule of thumb.
+
+There are also nice ideas for future work. The interest rate analysis rests on only 13 yearly observations and one extreme year, so a longer time period with more rate cycles would make this result much more solid. One could also repeat the analysis with weekly or monthly returns, where the bell curve usually fits a bit better.
+
+# Data Sources
+
+* **Big Tech Stock Prices**, TidyTuesday 2023-02-07, originally from Yahoo Finance via Kaggle: <https://github.com/rfordatascience/tidytuesday/tree/main/data/2023/2023-02-07> (provided as 14 CSV files in `archive/`)
+* **VIX daily history**, CBOE: <https://www.cboe.com/tradable_products/vix/vix_historical_data/> (the same series is on FRED as VIXCLS: <https://fred.stlouisfed.org/series/VIXCLS>, stored in `data/VIX_History.csv`)
+* **Federal funds rate**, FRED, series FEDFUNDS: <https://fred.stlouisfed.org/series/FEDFUNDS> (stored in `data/FEDFUNDS.csv`)
+* **Market crash dates**, Wikipedia, List of stock market crashes and bear markets: <https://en.wikipedia.org/wiki/List_of_stock_market_crashes_and_bear_markets>
