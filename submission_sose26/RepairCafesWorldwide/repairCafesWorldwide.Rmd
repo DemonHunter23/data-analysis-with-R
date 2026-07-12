@@ -1,0 +1,626 @@
+---
+title: "Exploring data from Repair Cafes Worldwide"
+author: "Tiana, Paul & Paul"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+    highlight: tango
+    code_download: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+
+options(scipen = 15)
+
+```
+
+```{r load-wrangle-data, echo = FALSE}
+#Load data
+library(tidyverse)
+
+repairs <- read_csv("./data/repairs.csv")
+repairs_text <- read_csv("./data/repairs_text.csv")
+
+#Join data
+repairs_joined <- repairs %>%
+  left_join(repairs_text, by = "repair_id", relationship = "many-to-many") %>% 
+  distinct(repair_id, failure_reasons, repair_date, .keep_all = TRUE)       
+
+# repair-level unique dataset for 4.3
+repairs_unique <- repairs %>%
+  distinct(repair_id, .keep_all = TRUE)
+
+#Basic Analysis
+
+
+
+```
+
+# The data
+
+The dataset we are using comes from the **Repair Monitor**, which has collected data from Repair Cafés worldwide since 2015, where volunteers help people fix broken household items. It has two linked tables: `repairs.csv` with structured fields such as date, country, product type, brand, whether it was repaired, and a repairability rating from 1 to 10, and `repairs_text.csv` with free-text details like the defect, the repair method, and reasons a repair failed. Together they cover thousands of repair cases across many countries and product categories.
+
+# Our Questions
+
+We have formulated three research questions that we intend to analyze and examine here.
+
+The first question is whether there is any seasonality regarding the repaired devices. We can imagine that strings of lights are mostly repaired at the beginning of the Advent season, since they are not used during the summer and a defect is often only discovered when putting them up.
+
+The second question deals with the repairability of failed repairs. We investigate if the EU regulations are targeting the right product categories. We are interested in the reasons of a failed repair, even tho the repair seams very promising at first. By filtering for the failed repairs and mapping the repairability with the reasons for failure we hope to show a clear connection between the product categories in the data and in the EU regulation.
+
+The third question examines whether repair success differs across product categories, and whether these differences are stable over time or shifting. We can image that growing awareness of repairability, increasing focus in circular economy and upcoming EU regulations on the right to repair might be reflected in an improving repair success rate over time. Further we are curious whether success rates differ between electrical, more technically complex products, and non-electrical products, as complexity could make repairs more difficult to complete successfully.
+
+# EU Guideline
+
+Governed by two legal acts: the **Right to Repair Directive (EU) 2024/1799** (consumer right to repair) and the **Ecodesign Regulations** (technical requirements per product).
+
+## Affected Product Categories
+
+- Washing machines & washer-dryers
+- Dishwashers
+- Refrigerators & freezers
+- Electronic displays (TVs, monitors)
+- Vacuum cleaners
+- Servers
+- Smartphones / mobile phones & tablets
+- Batteries for light means of transport (e-bikes, e-scooters)
+
+## Right to Repair Directive – Requirements (from 31 July 2026)
+
+- Obligation to repair even after the warranty period, at a reasonable price
+- Repair must not be blocked by software/hardware locks
+- Spare parts and repair information must be made available
+- European Repair Information Form (price, duration, conditions)
+- +12 months warranty extension when repairing instead of replacing
+- Obligations pass to importer/distributor if the manufacturer is outside the EU
+
+## Ecodesign – Requirements (technical, per product)
+
+- Spare parts availability: approx. 7–10 years after end of sales
+- Delivery of critical parts within 5–10 working days
+- Repair information for professionals (exploded diagrams, parts lists, tools, error codes)
+- Replaceable with standard tools without causing damage
+- Smartphones/tablets (since 20 June 2025): battery ≥80% after 800 charge cycles, OS updates ≥5 years, repairability score on the energy label
+
+**Key difference:** Ecodesign = *how repairable* a device must be built; Right to Repair = *the right* to demand the repair.
+
+# Reasearch Topics
+
+## Saisonality
+
+First, we want to check whether there are months when more devices are generally repaired, as this could indicate that repair cafés experience seasonal fluctuations in attendance, regardless of the specific device being repaired.
+
+```{r overall-saisonality}
+
+library(knitr)
+
+weekly_data <- repairs %>%
+  drop_na(kind_of_product, repair_date) %>%  #Drop all rows with missing data we need
+  mutate(week_of_repair = week(repair_date)) %>%  
+  group_by(week_of_repair) %>%
+  summarise(repairs_per_week = n(), .groups = "drop")
+
+#plot to visualize the data
+ggplot(dat = weekly_data, aes(x = week_of_repair, y = repairs_per_week)) + 
+  geom_col(fill = "lightgreen") + 
+  labs(
+    title = "Amount of repairs per week",
+    x = "week",
+    y = "Amount of repairs"
+  ) + 
+  theme_minimal()
+
+```
+
+It is evident that significantly more devices are repaired during the winter months than in the summer. This can likely be attributed to the fact that people use more technical devices in winter, whereas in summer they spend more time outdoors. Weeks 51, 52, and 1 are exceptions. due to the Christmas and New Year holidays, Repair Cafés have shorter opening hours, and people are busy celebrating.
+
+Next, the devices must be grouped by type, followed by an analysis to determine which ones exhibit the highest seasonality. Since a device repaired only once might appear to have very high seasonality even though this is likely a matter of chance. We first examine the frequency with which each device class is repaired in order to identify those truly affected by seasonality.
+
+```{r amount-of-repaired-devices}
+
+repairs_per_kind_of_device <- repairs %>%
+  drop_na(kind_of_product, repair_date) %>%  #Drop all rows with missing data we need
+  count(kind_of_product, name = "amount_repairs") %>%
+  
+  mutate(
+    frequency = cut (
+      amount_repairs,
+      breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, Inf),
+      labels = c("1 - 10", "11 - 19", "20 - 29", "30 - 39", "40 - 49", "50 - 59", "60 - 69", "70 - 79", "80 - 89", "90 - 99", "100+"),
+      right = TRUE
+    )
+  )
+
+#plot to visualize the data
+ggplot(dat = repairs_per_kind_of_device, aes(x = frequency)) + 
+  geom_bar(fill = "lightblue") + 
+  labs(
+    title = "Frequency of Amount of repairs per kind of product",
+    x = "Amount of repairs per kind of product",
+    y = "Amount of kind of products"
+  ) + 
+  theme_minimal()
+  
+
+```
+
+It is evident that many products are repaired only rarely, while a small number are repaired very frequently. Therefore, for the seasonality analysis, we consider only products that have undergone at least 100 repairs. The seasonality is calculated as the standard deviation of repairs per month.
+
+```{r most-seasonal-products}
+monthly_data <- repairs %>%
+  drop_na(kind_of_product, repair_date) %>%  #Drop all rows with missing data we need
+  mutate(month_of_repair = month(repair_date)) %>% 
+  count(kind_of_product, month_of_repair, name = "monthly_repairs") %>%
+  complete(kind_of_product, month_of_repair = 1:12, fill = list(monthly_repairs = 0))
+
+#calculate the seasonality by the standard deviation of the repairs per month
+most_seasonal <- monthly_data %>%
+  group_by(kind_of_product) %>%
+  summarize(
+    total_repairs_of_product = sum(monthly_repairs),
+    mean_repais_per_month = mean(monthly_repairs),
+    sd_repairs = sd(monthly_repairs),
+    .group = "drop"
+  ) %>%
+  
+  filter(total_repairs_of_product >= 100) %>%
+  mutate(seasonality_factor = sd_repairs / mean_repais_per_month) %>%
+  slice_max(order_by = seasonality_factor, n = 10) %>% #filter most 10 seasonal
+
+  inner_join(monthly_data, by = "kind_of_product") #filter the 10 most seasonal products from the monthly_data
+
+#plot to visualize the data
+ggplot(data = most_seasonal, aes(x = month_of_repair, y = monthly_repairs, color = kind_of_product)) +
+  geom_line(linewidth = 0.5) +
+  labs(
+    title = "Most seasonal Products",
+    x = "month",
+    y = "Amount of repairs",
+    color = "Kind of Product"
+  ) + 
+  theme_minimal() + 
+  scale_color_brewer(palette = "Paired")
+
+```
+
+To better identify the seasonality of individual products, the repair data is normalized, and a plot is generated for each kind of product.
+
+```{r relative-most-seasonal-products}
+#use seasonal data from last calculation
+relative_seasonal <- most_seasonal %>%
+  group_by(kind_of_product) %>%
+  mutate(
+    normalized_repairs = (monthly_repairs - min(monthly_repairs)) /(max(monthly_repairs) - min(monthly_repairs))
+  ) %>%
+  ungroup()
+  
+
+#plot to visualize the data
+ggplot(data = relative_seasonal, aes(x = month_of_repair, y = normalized_repairs, color = kind_of_product)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~kind_of_product, ncol = 2) +
+  labs(
+    title = "Most seasonal Products (normalized)",
+    x = "month",
+    y = "Relative amount of repairs",
+    color = "Kind of Product"
+  ) + 
+  theme_minimal() + 
+  scale_color_brewer(palette = "Paired") +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+  )
+
+```
+
+It can be seen that Christmas lights are most frequently repaired in December and January, whereas water pumps are repaired in June.
+
+## Repairability and Faild Repairs
+
+People bring their electronic devices or household appliances to a repair shop to get them fixed. A broken handle, a doll's chipped edge, a damaged cable, looks like a quick fix. But what sometimes seems like a very promising repair turns out to be more difficult than you think. In the following, we take a look at the repairs that were initially categorized as repairable but could not be repaired. We want to identify the most frequently named reason for a failed repair. In addition, we want to identify the product category that contains the most true negatives, a highly repairable device whose repair nonetheless failed. To connect this approach with the EU regulation, we compare the regulation with our findings at the end. We hope to see that the regulation targets the right product categories and repair reasons.
+
+```{r Distribution of repairability}
+repairability <- repairs_joined %>%
+  mutate(repairability = as.numeric(repairability)) %>%
+  filter(repairability >= 0, repairability <= 10) %>%
+  ggplot(aes(x = factor(repairability))) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = "Distribution of Repairability",
+    x = "Repairability (1-10)", y = "Density"
+  ) +
+  theme_bw()
+repairability
+```
+
+As we can see a hugh fraction of the repairs show a promissing repairability score between 8 and 10. In the following we are taking a look at the variable repaired and check how the distribution of the repairability changes. We want to investigate if the estimation of beeing a repairable product holds up. For this we separate between failed and succeeded repairs.
+
+```{r Distribution of repaired}
+repairability_yes_no <- repairs_joined %>%
+  mutate(repairability = as.numeric(repairability)) %>%
+  filter(repairability >= 0, repairability <= 10,
+         repaired %in% c("yes", "no")) %>%
+  ggplot(aes(x = factor(repairability), fill = repaired)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c(no = "orange", yes = "lightgreen")) +
+  labs(
+    title = "Distribution of Repairability by Repair Outcome",
+    x = "Repairability (1-10)", y = "Amount", fill = "Repaired?"
+  ) +
+  theme_bw()
+repairability_yes_no
+```
+
+From the plot we can derive that there are some tough repairs. Products that are categorized as repairable and but fail in a repair attempt. These kind of failed repairs are very interesting. Especially the reason behind the failed repair is interesting for us.
+
+```{r Failed Repaires}
+fehlgeschlagen <- repairs_joined %>%
+  mutate(repairability = as.numeric(repairability)) %>%
+  filter(repairability >= 6, repairability <= 10,
+         repaired == "no")
+
+gruende <- fehlgeschlagen %>%
+  count(failure_reasons, sort = TRUE)
+
+gruende <- fehlgeschlagen %>%
+  drop_na(failure_reasons) %>%
+  ggplot(aes(x = fct_infreq(failure_reasons))) +
+  geom_bar(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Easily repaired devices with failed repair",
+    subtitle = "Products with repairability 6-10 and repaired = no",
+    x = NULL, y = "Quantity"
+  ) +
+  theme_bw()
+gruende
+```
+
+Two of the top 3 reasons of a failed repair are connected to an issue with spare parts. The second most common reason is "No way to fix the product". Since we don't know what spare parts the repair needed, we can check to what product categories the repairs belong.
+
+```{r Reason of Failure and Product Category}
+plot_kategorien <- fehlgeschlagen %>%
+  drop_na(category) %>%
+  ggplot(aes(x = fct_infreq(category))) +
+  geom_bar(fill = "darkorange") +
+  coord_flip() +
+  labs(
+    title = "In which product categories did repairable devices remain unrepaired?",
+    x = NULL, y = "Quantity"
+  ) +
+  theme_bw()
+plot_kategorien
+
+top_kategorien <- fehlgeschlagen %>%
+  drop_na(category) %>%
+  count(category, sort = TRUE) %>%
+  head(4) %>%
+  pull(category)
+
+plot_facet <- fehlgeschlagen %>%
+  filter(category %in% top_kategorien) %>%
+  drop_na(failure_reasons) %>%
+  ggplot(aes(x = fct_infreq(failure_reasons))) +
+  geom_bar(fill = "seagreen") +
+  coord_flip() +
+  facet_wrap(~ category) +
+  labs(
+    title = "Reason of Failure for Product Category (Top 4)",
+    x = NULL, y = "Quantity"
+  ) +
+  theme_bw()
+plot_facet
+```
+
+We can see that the number of non-repairable devices is represented above all by the category of household appliances, followed by the category of displays and sound equipment. A deeper insight is provided by breaking down the reasons across the top 4 categories. In categories 2–4, the reasons are fairly evenly distributed. In the first category, the household appliances, the pattern of reasons for a failed repair is clearly visible. These also make up the majority of the devices brought in for repair. Almost everyone owns at least one household appliance and uses it daily. As a result, these devices are brought to a repair café more often than others. To be repaired, the corresponding spare part must therefore be available and affordable, or the device must be built in such a way that it can be repaired at all.
+
+```{r Top 10 kind_of_products}
+#Hausehold appliances electric
+top10_haushalt <- repairs_joined %>%
+  mutate(repairability = as.numeric(repairability)) %>%
+  filter(category == "Household appliances electric",
+         repairability >= 5, repairability <= 10,
+         repaired == "no") %>%
+  count(kind_of_product, sort = TRUE) %>%
+  head(10)
+
+plot_top10_haushalt <- top10_haushalt %>%
+  ggplot(aes(x = reorder(kind_of_product, n), y = n)) +
+  geom_col(fill = "seagreen") +
+  coord_flip() +
+  labs(
+    title = "Top 10 products (Household appliances electric)",
+    x = NULL, y = "Amount"
+  ) +
+  theme_bw()
+plot_top10_haushalt
+
+#Displays and sound equipment
+top10_displays <- repairs_joined %>%
+  mutate(repairability = as.numeric(repairability)) %>%
+  filter(category == "Display and sound equipment",
+         repairability >= 5, repairability <= 10,
+         repaired == "no") %>%
+  count(kind_of_product, sort = TRUE) %>%
+  head(10)
+
+plot_top10_displays <- top10_displays %>%
+  ggplot(aes(x = reorder(kind_of_product, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Products (Display and sound equipment)",
+    x = NULL, y = "Amount"
+  ) +
+  theme_bw()
+plot_top10_displays
+```
+
+The EU directive therefore targets exactly the right product categories. Looking at the top 10 values for the "kind_of_product" variable, it is clear that they align perfectly with the directive. The directive therefore covers exactly the right devices.
+
+## Repair Success Across Product Categories
+
+In this section, we investigate how repair success differs across product categories and whether repair outcomes have changed over time. Although the dataset technically contains a small number of repairs from as 2015, we restrict our following analysis to 2017–2025, as these are the 
+first years with sufficiently complete and consistent yearly documentation. 
+
+```{r setup-4.3, echo = FALSE}
+#data check
+year_check <- repairs %>% 
+  mutate(year = year(as.Date(repair_date)), month = month(as.Date(repair_date))) %>%
+  count(year, month) %>%
+  filter(year %in% c(2017, 2025)) %>%
+  arrange(year, month)
+
+#data preparation 
+repairs_success <- repairs_unique %>%
+  mutate(
+    repair_date = as.Date(repair_date),
+    year = year(repair_date),
+    repaired_clean = case_when(
+      repaired == "ja" ~ "yes",
+      repaired %in% c("yes", "no") ~ repaired,
+      TRUE ~ NA_character_
+    ),
+    success = repaired_clean == "yes"
+  ) %>%
+  filter(!is.na(repaired_clean))
+#only keep data-range with full year data available 
+repairs_success_full_years <- repairs_success %>%
+  filter(year >= 2017, year <= 2025)
+
+repairs_attempts_full_years <- repairs_unique %>%
+  mutate(
+    repair_date = as.Date(repair_date),
+    year = year(repair_date),
+    repaired_clean = case_when(
+      repaired == "ja" ~ "yes",
+      repaired %in% c("yes", "no", "half") ~ repaired,
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(repaired_clean), year >= 2017, year <= 2025)
+```
+
+```{r repair-attempts-per-year}
+#repair attempts per year, plot_4.3.1 
+repair_attempts <- repairs_attempts_full_years %>%
+  count(year) %>%
+  
+#plot to visualize the data 
+  ggplot(aes(x = year, y = n)) +
+  geom_col(fill = "darkgrey") +
+  labs(
+    title = "Number of documented repair attempts per year",
+    subtitle = "yes, no and partial repairs included; time frame 2017-2025",
+    x = "Year",
+    y = "Number of repair attempts"
+  ) +
+  scale_x_continuous(
+    breaks = 2017:2025
+  ) +
+  theme_bw()
+repair_attempts
+```
+
+The chart shows, that the number of documented repair attempts in the Repair Cafés increased over the observation period, particularly from 2022 onwards. In the following analyses, we will only include repairs with a clear "yes" or "no" outcome and exclude partial repairs (tagged as "half" repaired in data), to avoid ambiguous outcomes.
+
+```{r repair-attempts-by-category}
+#repair attempts by product category, plot_4.3.2 
+repair_attempts_category <- repairs_success_full_years %>%
+  drop_na(category) %>%
+  count(category, sort = TRUE) %>%
+  
+#plot to visualize the data
+   ggplot(aes(x = reorder(category, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Repair attempts by product category",
+    subtitle = "Only clear yes/no outcomes; partial repairs excluded; time frame 2017-2025",
+    x = NULL,
+    y = "Number of repair attempts"
+  ) +
+  theme_bw()
+repair_attempts_category
+```
+
+This plot shows that repair attempts in the Repair Cafés are not distributed evenly across product categories. Household appliances have the largest number of repair attempts, followed by textiles and display and sound equipment. This uneven distribution should be considered when comparing repair success rates, as some categories are represented by substantially more observations than others.
+
+```{r success-by-category}
+# success by categories, plot_4.3.3 
+success_by_category <- repairs_success_full_years %>%
+  drop_na(category) %>%
+  group_by(category) %>%
+  summarise(
+    n_repairs = n(),
+    n_success = sum(success),
+    success_rate = mean(success),
+    .groups = "drop"
+  ) %>%
+  filter(n_repairs >= 50) %>%
+  arrange(desc(success_rate))
+
+plot_4.3.3 <- ggplot(success_by_category, aes(x = reorder(category, success_rate), y = success_rate)) +
+  geom_col(fill = "darkorange") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Repair success rate by product category",
+    subtitle = "Only clear yes/no outcomes; time frame 2017-2025",
+    x = NULL,
+    y = "Success rate"
+  ) +
+  theme_bw()
+plot_4.3.3
+```
+
+This plot addresses the question of how repair success varies across different product categories and identifies the categories with the highest and lowest success rate. Considerable differences can be observed across categories. Textile products achieve the highest repair success rates, whereas display and sound equipment, computer equipment and phones, as well as electric tools, show noticeably lower success rates.
+
+To further investigate repair success, we group product categories into "electrical" and "non-electrical" devices based on whether their functionality depends on electrical components: 
+
+- Electrical products: Household appliances electric; Display and sound equipment; Tools electric; Computer equipment / phones; Toys electric; Clocks / alarm clocks. 
+- Non-electrical products: Textile; Bicycles; Jewelry; Furniture; Toys non-electric; Household appliances non-electric; Tools non-electric; Other (neutral). 
+
+We can also see that these categories are already kind of grouped in the plot above ("Repair success rate by product category"). 
+
+```{r success-by-supercategory}
+
+#Group electric vs non-electric grouping
+electric_success <- repairs_success_full_years %>%
+  mutate(
+    electric_group = case_when(
+      category %in% c(
+        "Household appliances electric",
+        "Display and sound equipment",
+        "Tools electric",
+        "Computer equipment / phones",
+        "Toys electric",
+        "Clocks / alarm clocks"
+      ) ~ "Electric",
+      TRUE ~ "Non-electric"
+    )
+  ) %>%
+  group_by(electric_group) %>%
+  summarise(
+    n_repairs = n(),
+    success_rate = mean(success),
+    .groups = "drop"
+  )
+
+#plot to visualize the data, plot_4.3.4
+ggplot(electric_success, aes(x = electric_group, y = success_rate)) +
+  geom_col(fill = "steelblue") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Repair success rate: Electric vs Non-electric products",
+    subtitle = "Based on categories grouped by technical dependency; time frame 2017-2025",
+    x = NULL,
+    y = "Success rate"
+  ) +
+  theme_bw()
+```
+
+Electrical products show a lower average repair success rate than non-electrical products. As noted above, this electrical / non-electrical classification is a simplification and should be interpreted with caution.
+
+```{r success-by-year}
+#overall success rate over years from all products, plot_4.3.5
+success_by_year <- repairs_success_full_years %>%
+  group_by(year) %>%
+  summarise(
+    n_repairs = n(),
+    n_success = sum(success),
+    success_rate = mean(success),
+    success_rate_percent = scales::percent(success_rate, accuracy = 0.1),
+    .groups = "drop"
+  )
+
+#plot to visualize the data
+plot_4.3.5 <- ggplot(success_by_year, aes(x = year, y = success_rate)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Repair success rate over time",
+    subtitle = "Compelete years only: 2017-2025; half repairs excluded", 
+    x = "Year",
+    y = "Success rate"
+  ) +
+  scale_x_continuous(
+    breaks = 2017:2025
+  ) +
+  theme_bw()
+plot_4.3.5
+```
+
+We can see, that the overall repair success remained relatively stable over time, ranging between roughly 71% and 74%. Although small year-to-year differences exist, there is yet no indication of a long-term increase or decrease in repair success.
+
+```{r change-of-success-over-time-top5-category}
+#change_of_success_over_time_by_top5_categories, plot_4.3.6
+
+#success rate per category and year
+category_year <- repairs_success_full_years %>%
+  drop_na(category) %>%
+  group_by(category, year) %>%
+  summarise(
+    success_rate = mean(success),
+    n_repairs = n(),
+    .groups = "drop"
+  )
+
+#change over all years 
+category_change <- category_year %>%
+  filter(year %in% c(2017, 2025)) %>%
+  select(category, year, success_rate, n_repairs) %>%
+  pivot_wider(names_from = year, values_from = c(success_rate, n_repairs)) %>%
+  filter(!is.na(success_rate_2017), !is.na(success_rate_2025)) %>%
+  filter(n_repairs_2017 >= 20, n_repairs_2025 >= 20) %>% 
+  mutate(change = success_rate_2025 - success_rate_2017)
+
+#top5
+top5_change <- category_change %>%
+  arrange(desc(abs(change))) %>%
+  slice(1:5) %>%
+  pull(category)
+
+plot_data <- category_year %>%
+  filter(category %in% top5_change)
+
+#plot to visualize the data 
+ggplot(plot_data, aes(x = year, y = success_rate, color = category)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(aes(size = n_repairs)) +
+  geom_point(data = filter(plot_data, year == 2017), size = 4, shape = 1, color = "black", stroke = 1.2) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_size_continuous(range = c(1, 5), name = "Sample size") +
+  labs(
+    title = "Categories with the largest change in repair success over time",
+    subtitle = "Top 5 categories based on change between 2017 and 2025; circled points = 2017 (smallest samples)",
+    x = "Year", y = "Success rate", color = "Category"
+  ) +
+   scale_x_continuous(
+    breaks = 2017:2025
+  ) +
+  theme_bw()
+```
+
+This plot shows the five product categories with the largest change in repair success between 2017 and 2025. Point size reflects the number of repairs per year; circled points mark 2017, the year with the smallest sample size for every category. For four of the five categories (Furniture, Clocks/alarm clocks, Other, Toys non-electric), most of the change occurs between 2017 and 2018 alone, after which success rates settle into a stable range. This suggests that 2017 was a year with still few documented repairs in the Repair Café network, and that the large endpoint-based changes overstate how much repair success has actually shifted over time. Combined with the stable overall rate from section 4.3.5, this supports the conclusion that repair success is primarily determined by product category rather than by time.
+
+**Conclusion third question:**
+Contrary to our initial expectation, repair success did not consistently improve over the observed period. The data suggest that repair success is primarily determined by product category rather than by factors such as increased repair knowledge or growing regulatory attention. Electrical products consistently show a lower success rate than non-electrical products, reinforcing that technical complexity, and related spare-part availability, as discussed in section 4.2, plays a larger role than time-related improvement.
+
+# Sources
+
+- [Directive on repair of goods – European Commission](https://commission.europa.eu/law/law-topic/consumer-protection-law/directive-repair-goods_en)
+- [Right to repair requirements – Fieldfisher](https://www.fieldfisher.com/en/insights/incoming-eu-right-to-repair-requirements-the-key-t)
+- [New EU rules for smartphones & tablets – European Commission](https://single-market-economy.ec.europa.eu/news/new-eu-rules-durable-energy-efficient-and-repairable-smartphones-and-tablets-start-applying-2025-06-20_en)
